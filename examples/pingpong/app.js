@@ -1,4 +1,4 @@
-import { Canvas, Events, Rectangle, Circle } from '../Infinite.js';
+import { Canvas, Events, Rectangle, Circle, DisplayText, Util } from '../../Infinite.js';
 
 var canvas = new Canvas();
 var events = new Events(canvas, { keyboard: true, mouse: false, touch: false, debug: false });

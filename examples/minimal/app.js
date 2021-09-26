@@ -1,4 +1,4 @@
-import { Canvas, Events } from '../Infinite.js';
+import { Canvas, Events } from '../../Infinite.js';
 
 var canvas = new Canvas();
 canvas.colour = 'lightblue';

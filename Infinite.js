@@ -15,7 +15,7 @@
 import 'https://unpkg.com/intersects/umd/intersects.min.js';
 import { isPolygonConvex } from './PolygonDetect.js';
 
-document.querySelectorAll('*').style = 'margin: 0%; padding: 0%;';
+document.body.style = 'margin: 0%; padding: 0%;';
 class Canvas
 {
     #canvas;
@@ -28,6 +28,7 @@ class Canvas
     constructor(width, height)
     {
         this.#canvas = document.getElementById("Infinite");
+        this.#canvas.style = 'margin: 0%; padding: 0%;'
         this.#canvas.tabIndex = '1';
         this.#ctx = this.#canvas.getContext("2d");
 
