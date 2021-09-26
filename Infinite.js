@@ -1,16 +1,3 @@
-// Seamus's TODO list
-// -------------------------------------------------------------------
-// DONE Finish Polygon class
-// DONE Create draw/render method for the Polygon class
-// DONE Concave Polygon detection when a shape is inside it doesn't work yet
-
-// TEST Contains method for sprite and polygon classes
-
-// TODO Fix/Restructer the Sprite class again to make it easier to use
-// TODO Add touch events/controls to Events class
-// TODO Add touch joysticks for touch game support
-// TODO Flesh out Util class with more backend functions
-// TODO Rewrite/add more feature to the DisplayText class
 import 'https://unpkg.com/intersects/umd/intersects.min.js';
 import { isPolygonConvex } from './PolygonDetect.js';
 
