@@ -6,12 +6,19 @@ canvas.colour = 'lightblue';
 var events = new Events(canvas, { keyboard: true, mouse: true, touch: true });
 
 
-canvas.onStart(() => {});
+canvas.onStart(() =>
+{
+
+});
+
 canvas.onUpdate(() =>
 {
     canvas.clear();
 });
-canvas.onEnd(() => {});
 
+canvas.onEnd(() =>
+{
+
+});
 
 canvas.run();
