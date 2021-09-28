@@ -330,7 +330,7 @@ class Util
     {
         setTimeout(func, ms);
     }
-    
+
     static random(start, end)
     {
         return Math.round(Math.random() * Math.abs(end - start)) + start;
@@ -392,7 +392,7 @@ class Shape
 
     getDirection()
     {
-        return this._direction;
+        return this._direction % 360;
     }
 
     setDirection(degrees)
@@ -410,6 +410,65 @@ class Shape
         let rads = this._direction * (Math.PI / 180);
         this.x += Math.round(distance * Math.sin(rads));
         this.y -= Math.round(distance * Math.cos(rads));
+    }
+}
+
+
+
+class Line
+{
+    constructor(x1 = 0, y1 = 0, x2 = 0, y2 = 0, width = 1, colour = 'black')
+    {
+        this.x1 = x1;
+        this.y1 = y1;
+        this.x2 = x2;
+        this.y2 = y2;
+        this.width = width;
+        this.colour = colour;
+    }
+
+    intersects(shape)
+    {
+        if (shape instanceof Sprite) shape = shape.getHitbox();
+
+        if (shape instanceof Polygon)
+        {
+            if (isPolygonConvex(shape._points))
+            {
+                return Intersects.linePolygon(this.x1, this.y1, this.x2, this.y2, Util.objArrayToArray(shape._points), 0.0001);
+            }
+            else
+            {
+                if (shape.contains({ x: this.x1, y: this.y1 })) return true;
+                for (let i = 0; i < shape._lines.length; i++)
+                {
+                    let p1 = shape._lines[i]()[0]();
+                    let p2 = shape._lines[i]()[1]();
+                    if (Intersects.lineLine(this.x1, this.y1, this.x2, this.y2, p1.x, p1.y, p2.x, p2.y, this.width, 1))
+                        return true;
+                };
+                return false;
+            }
+        }
+        else if (shape instanceof Circle)
+        {
+            return Intersects.polygonCircle(Util.objArrayToArray(this._points), shape.x + shape.radius, shape.y + shape.radius, shape.radius, 0.0001);
+        }
+        else if (shape instanceof Line)
+        {
+            return Intersects.lineLine(this.x1, this.y1, this.x2, this.y2, shape.x1, shape.y1, shape.x2, shape.y2, this.width, shape.width)
+        }
+        return null;
+    }
+
+    draw(ctx)
+    {
+        ctx.beginPath();
+        ctx.lineWidth = this.width;
+        ctx.strokeStyle = this.colour;
+        ctx.moveTo(this.x1, this.y1);
+        ctx.lineTo(this.x2, this.y2);
+        ctx.stroke();
     }
 }
 
@@ -503,7 +562,6 @@ class Polygon extends Shape
 
     intersects(shape)
     {
-        
         if (shape instanceof Sprite) shape = shape.getHitbox();
 
         if (shape instanceof Rectangle)
@@ -789,9 +847,9 @@ class Sprite extends Shape
             this.width = this.#img.width;
             this.height = this.#img.height;
         }
-        
 
-        this.#hitbox = new Rectangle(this.width, this.height, 0 ,0);
+
+        this.#hitbox = new Rectangle(this.width, this.height, 0, 0);
         this.#hitbox.colour = 'rgba(255, 0, 0, 0.4)';
 
         this.#imageArea = new Rectangle(this.width, this.height);
@@ -853,7 +911,7 @@ class Sprite extends Shape
         }
         this.width = width;
         this.height = height;
-        this.#hitbox = new Rectangle(this.width, this.height, 0 ,0);
+        this.#hitbox = new Rectangle(this.width, this.height, 0, 0);
     }
 
     setWidth(width)
@@ -863,7 +921,7 @@ class Sprite extends Shape
             this.#hitbox.width *= (width / this.width);
         }
         this.width = width;
-        this.#hitbox = new Rectangle(this.width, this.height, 0 ,0);
+        this.#hitbox = new Rectangle(this.width, this.height, 0, 0);
     }
 
     setHeight(height)
@@ -873,7 +931,7 @@ class Sprite extends Shape
             this.#hitbox.height *= (height / this.height);
         }
         this.height = height;
-        this.#hitbox = new Rectangle(this.width, this.height, 0 ,0);
+        this.#hitbox = new Rectangle(this.width, this.height, 0, 0);
     }
 
     setImage(img)
@@ -943,4 +1001,4 @@ class DisplayText
     }
 }
 
-export { Canvas, Events, Util, Polygon, Rectangle, Circle, Sprite, DisplayText };
+export { Canvas, Events, Util, Line, Polygon, Rectangle, Circle, Sprite, DisplayText };
