@@ -11,6 +11,7 @@
 // TODO Add touch joysticks for touch game support
 // TODO Flesh out Util class with more backend functions
 // TODO Rewrite/add more feature to the DisplayText class
+// TODO Move isConvexPoly out of intersects and run it after shape is modified to reduce calls
 
 import 'https://unpkg.com/intersects/umd/intersects.min.js';
 import { isPolygonConvex } from './PolygonDetect.js';
@@ -417,13 +418,12 @@ class Shape
 
 class Line
 {
-    constructor(x1 = 0, y1 = 0, x2 = 0, y2 = 0, width = 1, colour = 'black')
+    constructor(x1 = 0, y1 = 0, x2 = 0, y2 = 0, colour = 'black')
     {
         this.x1 = x1;
         this.y1 = y1;
         this.x2 = x2;
         this.y2 = y2;
-        this.width = width;
         this.colour = colour;
     }
 
@@ -439,24 +439,26 @@ class Line
             }
             else
             {
-                if (shape.contains({ x: this.x1, y: this.y1 })) return true;
+                if (shape.contains({ x: this.x1, y: this.y1 }) || shape.contains({ x: this.x2, y: this.y2 })) return true;
                 for (let i = 0; i < shape._lines.length; i++)
                 {
                     let p1 = shape._lines[i]()[0]();
                     let p2 = shape._lines[i]()[1]();
-                    if (Intersects.lineLine(this.x1, this.y1, this.x2, this.y2, p1.x, p1.y, p2.x, p2.y, this.width, 1))
+                    if (Intersects.lineLine(this.x1, this.y1, this.x2, this.y2, p1.x, p1.y, p2.x, p2.y, 1, 1))
+                    {
                         return true;
+                    }
                 };
                 return false;
             }
         }
         else if (shape instanceof Circle)
         {
-            return Intersects.polygonCircle(Util.objArrayToArray(this._points), shape.x + shape.radius, shape.y + shape.radius, shape.radius, 0.0001);
+            return Intersects.lineCircle(this.x1, this.y1, this.x2, this.xy2, shape.x + shape.radius, shape.y + shape.radius, shape.radius);
         }
         else if (shape instanceof Line)
         {
-            return Intersects.lineLine(this.x1, this.y1, this.x2, this.y2, shape.x1, shape.y1, shape.x2, shape.y2, this.width, shape.width)
+            return Intersects.lineLine(this.x1, this.y1, this.x2, this.y2, shape.x1, shape.y1, shape.x2, shape.y2, 1, 1)
         }
         return null;
     }
@@ -564,28 +566,7 @@ class Polygon extends Shape
     {
         if (shape instanceof Sprite) shape = shape.getHitbox();
 
-        if (shape instanceof Rectangle)
-        {
-            if (isPolygonConvex(this._points))
-            {
-                return Intersects.polygonPolygon(Util.objArrayToArray(this._points), Util.objArrayToArray(shape._points));
-            }
-            else
-            {
-                if (shape.contains(this._points[0]()) || this.contains(shape._points[0]())) return true;
-                for (let i = 0; i < this._lines.length; i++)
-                {
-                    for (let j = 0; j < shape._lines.length; j++)
-                    {
-                        if (shape.intersectLines(this._lines[i], shape._lines[j]))
-                        {
-                            return true;
-                        }
-                    };
-                };
-            }
-        }
-        else if (shape instanceof Polygon)
+        if (shape instanceof Polygon)
         {
             if (isPolygonConvex(this._points) && isPolygonConvex(shape._points))
             {
@@ -598,43 +579,50 @@ class Polygon extends Shape
                 {
                     for (let j = 0; j < shape._lines.length; j++)
                     {
-                        if (shape.intersectLines(this._lines[i], shape._lines[j]))
+                        let p1 = this._lines[i]()[0]();
+                        let p2 = this._lines[i]()[1]();
+                        let p3 = shape._lines[i]()[0]();
+                        let p4 = shape._lines[i]()[1]();
+                        
+                        if (Intersects.lineLine(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y, p4.x, p4.y, 1, 1))
                         {
                             return true;
                         }
                     };
+                    return false;
                 };
             }
         }
         else if (shape instanceof Circle)
         {
-            return Intersects.polygonCircle(Util.objArrayToArray(this._points), shape.x + shape.radius, shape.y + shape.radius, shape.radius, 0.0001);
+            if (isPolygonConvex(this._points))
+            {
+                return Intersects.polygonCircle(Util.objArrayToArray(this._points), shape.x + shape.radius, shape.y + shape.radius, shape.radius, 0.0001);
+            }
+            else throw "Concave-Polygon and Circle intersects are not finished";
+        }
+        else if (shape instanceof Line)
+        {
+            if (isPolygonConvex(this._points))
+            {
+                return Intersects.polygonLine(Util.objArrayToArray(this._points), shape.x1, shape.y1, shape.x2, shape.y2, 0.0001);    
+            }
+            else
+            {
+                if (this.contains({ x: shape.x1, y: shape.y1 }) || this.contains({ x: shape.x2, y: shape.y2 })) return true;
+                for (let i = 0; i < this._lines.length; i++)
+                {
+                    let p1 = this._lines[i]()[0]();
+                    let p2 = this._lines[i]()[1]();
+                    if (Intersects.lineLine(p1.x, p1.y, p2.x, p2.y, shape.x1, shape.y1, shape.x2, shape.y2, 1, 1))
+                    {
+                        return true;
+                    }
+                };
+                return false;
+            }
         }
         return null;
-    }
-
-    intersectLines()
-    {
-        let p1, p2, p3, p4;
-        if (arguments.length == 2)
-        {
-            p1 = arguments[0]()[0]();
-            p2 = arguments[0]()[1]();
-            p3 = arguments[1]()[0]();
-            p4 = arguments[1]()[1]();
-        }
-
-        var det, gamma, lambda;
-        det = (p2.x - p1.x) * (p4.y - p3.y) - (p4.x - p3.x) * (p2.y - p1.y);
-        if (det === 0)
-        {
-            return false;
-        } else
-        {
-            lambda = ((p4.y - p3.y) * (p4.x - p1.x) + (p3.x - p4.x) * (p4.y - p1.y)) / det;
-            gamma = ((p1.y - p2.y) * (p4.x - p1.x) + (p2.x - p1.x) * (p4.y - p1.y)) / det;
-            return (0 <= lambda && lambda <= 1) && (0 <= gamma && gamma <= 1);
-        }
     }
 
     rotatePoint(pt)
@@ -783,19 +771,21 @@ class Circle extends Shape
     {
         if (shape instanceof Sprite) shape = shape.getHitbox();
 
-        if (shape instanceof Rectangle)
-        {
-            return Intersects.polygonCircle(Util.objArrayToArray(shape._points), this.x + this.radius, this.y + this.radius, this.radius, 0.0001);
-        }
-        else if (shape instanceof Polygon)
+        if (shape instanceof Polygon)
         {
             if (isPolygonConvex(shape._points))
-                return Intersects.polygonCircle(Util.objArrayToArray(shape._points), this.x + this.radius, this.y + this.radius, this.radius, 0.0001);
+            {
+                return Intersects.circlePolygon(this.x + this.radius, this.y + this.radius, this.radius, Util.objArrayToArray(shape._points));
+            }
             else throw "Circle and Concave-Polygon intersects are not yet finished";
         }
         else if (shape instanceof Circle)
         {
             return Intersects.circleCircle(this.x + this.radius, this.y + this.radius, this.radius, shape.x + shape.radius, shape.y + shape.radius, shape.radius);
+        }
+        else if (shape instanceof Line)
+        {
+            return Intersects.circleLine(this.x + this.radius, this.y + this.radius, this.radius, shape.x1, shape.y1, shape.x2, shape.y2);
         }
         return null;
     }
