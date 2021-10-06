@@ -17,7 +17,7 @@ var cirArea = new Circle(60, 100, 100);
 var rect = new Rectangle(300, 100, 200, 200);
 
 // player Sprite
-var p = new Sprite('https://www.pngplay.com/wp-content/uploads/6/Apple-Fruit-Shining-Small-Transparent-PNG.png', cir);
+var p = new Sprite('https://www.pngplay.com/wp-content/uploads/6/Apple-Fruit-Shining-Small-Transparent-PNG.png', cirArea);
 
 canvas.onUpdate(() =>
 {

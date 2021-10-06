@@ -806,6 +806,7 @@ class Circle extends Shape
     {
         super();
         this.radius = radius;
+        this.setCenter(radius, radius);
 
         if (arguments.length > 2)
         {
@@ -923,12 +924,14 @@ class Sprite extends Shape
         {
             let clone = new Polygon(this.#area.json, this.x, this.y);
             clone._direction = this._direction;
+            clone._center = this._center;
             return clone;
         }
         else if (this.#area instanceof Circle)
         {
             let clone = new Circle(this.#area.radius, this.x, this.y);
             clone._direction = this._direction;
+            clone._center = this.#area._center;
             return clone;
         }
     }
@@ -955,7 +958,8 @@ class Sprite extends Shape
         
         context.beginPath();
 
-        let o = this.getCenter()
+        this.setCenter(this.#area._center.x, this.#area._center.y);
+        let o = this.getCenter();
         context.translate(o.x, o.y);
         context.rotate(this._direction * Math.PI / 180);
         context.translate(-o.x, -o.y);
