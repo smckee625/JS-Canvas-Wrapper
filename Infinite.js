@@ -952,6 +952,7 @@ class Sprite extends Shape
 {
     #img = new Image();
     #area;
+    #showHitbox = false;
 
     constructor(img, area, scaleX, scaleY)
     {
@@ -993,9 +994,12 @@ class Sprite extends Shape
 
                 self.#area.setScale(scaleX, scaleY);
             }
-
-            self.#area.colour = 'rgba(0, 0, 0, 0.0)';
         }
+    }
+
+    showHitbox(value = true)
+    {
+        this.#showHitbox = value;
     }
 
     getHitbox()
@@ -1044,13 +1048,23 @@ class Sprite extends Shape
         context.rotate(this._direction * Math.PI / 180);
         context.translate(-o.x, -o.y);
 
-        this.#area.draw(context, "mask");
+        if (this.#showHitbox) 
+        {
+            this.#area.draw(context);
+        }
+        else 
+        {
+            let temp = this.#area.colour;
+            this.#area.colour = 'rgba(0, 0, 0, 0.0)';
+            this.#area.draw(context, "mask");
+            this.#area.colour = temp;
+
+            context.clip();
+            context.drawImage(this.#img, this.x - areaX, this.y - areaY);
+        }
 
         this.#area.x = areaX;
         this.#area.y = areaY;
-
-        context.clip();
-        context.drawImage(this.#img, this.x - areaX, this.y - areaY);
 
         context.setTransform(1, 0, 0, 1, 0, 0);
         context.restore();
