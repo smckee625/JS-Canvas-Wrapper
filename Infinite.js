@@ -376,8 +376,13 @@ class Shape
     {
         this.x = 0;
         this.y = 0;
+
         this._direction = 0;
         this.colour = "black";
+
+        this.scale = { x: 1.0, y: 1.0 };
+
+        this._center = { x: 0, y: 0 };
     }
 
     getPosition()
@@ -411,6 +416,27 @@ class Shape
         let rads = this._direction * (Math.PI / 180);
         this.x += Math.round(distance * Math.sin(rads));
         this.y -= Math.round(distance * Math.cos(rads));
+    }
+
+    getScale()
+    {
+        return this.scale;
+    }
+
+    setScale(scaleX, scaleY)
+    {
+        this.scale.x = scaleX;
+        this.scale.y = scaleY;
+    }
+
+    getCenter()
+    {
+        return { x: this._center.x + this.x, y: this._center.y + this.y };
+    }
+
+    setCenter(x, y)
+    {
+        this._center = { x: x, y: y };
     }
 }
 
@@ -482,36 +508,40 @@ class Polygon extends Shape
     constructor(json, x, y)
     {
         super();
+        this.json = json;
 
         this._points = [];
         this._lines = [];
 
-        this.rOriginX = 0;
-        this.rOriginY = 0;
-
-        if (arguments.length > 0) this.setPoints(json);
         if (arguments.length == 3)
         {
             this.x = x;
             this.y = y;
         }
+        if (arguments.length > 0) this.setPoints(json);
     }
 
     addPoint(x, y)
     {
-        if (x > this.#dimensions.maxX) this.#dimensions.maxX = x;
-        else if (x < this.#dimensions.minX) this.#dimensions.minX = x;
-        if (y > this.#dimensions.maxY) this.#dimensions.maxY = y;
-        else if (y < this.#dimensions.minY) this.#dimensions.minY = y;
-        this.rOriginX = (this.#dimensions.maxX - this.#dimensions.minX) / 2;
-        this.rOriginY = (this.#dimensions.maxY - this.#dimensions.minY) / 2;
-
-        if (arguments.length == 1)
+        if (this.#dimensions.minX == null)
         {
-            this._points.push(() => { return this.rotatePoint({ x: this.x + x.x, y: this.y + x.y }) });
-            return true;
+            this.#dimensions.maxX = x;
+            this.#dimensions.minX = x;
+            this.#dimensions.maxY = y;
+            this.#dimensions.minY = y;
         }
-        else if (arguments.length == 2)
+        else
+        {
+            if (x > this.#dimensions.maxX) this.#dimensions.maxX = x;
+            else if (x < this.#dimensions.minX) this.#dimensions.minX = x;
+            if (y > this.#dimensions.maxY) this.#dimensions.maxY = y;
+            else if (y < this.#dimensions.minY) this.#dimensions.minY = y;
+        }
+
+        this._center.x = (this.#dimensions.maxX - this.#dimensions.minX) / 2 * this.scale.x;
+        this._center.y = (this.#dimensions.maxY - this.#dimensions.minY) / 2 * this.scale.y;
+
+        if (arguments.length == 2)
         {
             this._points.push(() => { return this.rotatePoint({ x: this.x + x, y: this.y + y }) });
             return true;
@@ -523,6 +553,7 @@ class Polygon extends Shape
     {
         this._points = [];
         let self = this;
+
         this.#dimensions.minX = json[0].x;
         this.#dimensions.maxX = json[0].x;
         this.#dimensions.minY = json[0].y;
@@ -535,7 +566,7 @@ class Polygon extends Shape
             if (point.y > this.#dimensions.maxY) this.#dimensions.maxY = point.y;
             else if (point.y < this.#dimensions.minY) this.#dimensions.minY = point.y;
 
-            this._points.push(() => { return this.rotatePoint({ x: this.x + point.x, y: this.y + point.y }) });
+            this._points.push(() => { return this.rotatePoint({ x: this.x + (point.x * this.scale.x), y: this.y + (point.y * this.scale.y) }) });
         });
         this._points.forEach(function (point, i)
         {
@@ -546,8 +577,8 @@ class Polygon extends Shape
         });
         this._lines.push(() => { return [this._points[this._points.length - 1], this._points[0]]; });
 
-        this.rOriginX = (this.#dimensions.maxX - this.#dimensions.minX) / 2;
-        this.rOriginY = (this.#dimensions.maxY - this.#dimensions.minY) / 2;
+        this._center.x = (this.#dimensions.maxX - this.#dimensions.minX) / 2 * this.scale.x;
+        this._center.y = (this.#dimensions.maxY - this.#dimensions.minY) / 2 * this.scale.y;
     }
 
     contains(point)
@@ -583,7 +614,7 @@ class Polygon extends Shape
                         let p2 = this._lines[i]()[1]();
                         let p3 = shape._lines[i]()[0]();
                         let p4 = shape._lines[i]()[1]();
-                        
+
                         if (Intersects.lineLine(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y, p4.x, p4.y, 1, 1))
                         {
                             return true;
@@ -605,7 +636,7 @@ class Polygon extends Shape
         {
             if (isPolygonConvex(this._points))
             {
-                return Intersects.polygonLine(Util.objArrayToArray(this._points), shape.x1, shape.y1, shape.x2, shape.y2, 0.0001);    
+                return Intersects.polygonLine(Util.objArrayToArray(this._points), shape.x1, shape.y1, shape.x2, shape.y2, 0.0001);
             }
             else
             {
@@ -631,14 +662,13 @@ class Polygon extends Shape
         {
             let angle = this._direction * (Math.PI / 180); // Convert to radians
 
-            let ox = this.x + this.rOriginX;
-            let oy = this.y + this.rOriginY;
-            let tempX = pt.x - ox;
-            let tempY = pt.y - oy;
+            let o = this.getCenter();
+            let tempX = pt.x - o.x;
+            let tempY = pt.y - o.y;
 
-            let rotatedX = Math.cos(angle) * tempX - Math.sin(angle) * tempY + ox;
+            let rotatedX = Math.cos(angle) * tempX - Math.sin(angle) * tempY + o.x;
 
-            let rotatedY = Math.sin(angle) * tempX + Math.cos(angle) * tempY + oy;
+            let rotatedY = Math.sin(angle) * tempX + Math.cos(angle) * tempY + o.y;
 
             return { x: rotatedX, y: rotatedY };
         }
@@ -650,20 +680,35 @@ class Polygon extends Shape
 
     draw(ctx)
     {
-        ctx.save();
-        ctx.beginPath();
-
-        ctx.fillStyle = this.colour;
-        ctx.moveTo(this._points[0]().x, this._points[0]().y);
-        this._points.forEach(function (point, i)
+        if (arguments.length == 2 && arguments[1] == "mask")
         {
-            if (i != 0)
-                ctx.lineTo(point().x, point().y);
-        });
-        if (this._points.length < 3 || (arguments.length == 2 && arguments[1] == "mask")) ctx.stroke();
-        else ctx.fill();
+            // ctx.fillStyle = 'red';
+            ctx.moveTo(this._points[0]().x, this._points[0]().y);
+            this._points.forEach(function (point, i)
+            {
+                if (i != 0)
+                    ctx.lineTo(point().x, point().y);
+            });
+            ctx.closePath();
+            // ctx.fill();
+        }
+        else
+        {
+            ctx.save();
+            ctx.beginPath();
 
-        ctx.restore();
+            ctx.fillStyle = this.colour;
+            ctx.moveTo(this._points[0]().x, this._points[0]().y);
+            this._points.forEach(function (point, i)
+            {
+                if (i != 0)
+                    ctx.lineTo(point().x, point().y);
+            });
+            if (this._points.length < 3) ctx.stroke();
+            else ctx.fill();
+
+            ctx.restore();
+        }
     }
 }
 
@@ -683,8 +728,8 @@ class Rectangle extends Polygon
             this.y = y;
         }
 
-        this.rOriginX = this.#width / 2;
-        this.rOriginY = this.#height / 2;
+        this._center.x = this.#width / 2;
+        this._center.y = this.#height / 2;
     }
 
     getSize()
@@ -733,21 +778,23 @@ class Rectangle extends Polygon
 
     draw(context)
     {
-        let cx = this.x + 0.5 * this.#width;
-        let cy = this.y + 0.5 * this.#height;
+        // let cx = this.x + 0.5 * this.#width;
+        // let cy = this.y + 0.5 * this.#height;
 
-        context.save();
+        // context.save();
 
-        context.translate(cx, cy);
-        context.rotate(this._direction * (Math.PI / 180));
-        context.translate(-cx, -cy);
+        // context.translate(cx, cy);
+        // context.rotate(this._direction * (Math.PI / 180));
+        // context.translate(-cx, -cy);
 
-        context.beginPath();
-        context.fillStyle = this.colour;
-        if (arguments.length == 2 && arguments[1] == "mask") context.rect(this.x, this.y, this.#width, this.#height);
-        else context.fillRect(this.x, this.y, this.#width, this.#height);
+        // context.beginPath();
+        // context.fillStyle = this.colour;
+        // if (arguments.length == 2 && arguments[1] == "mask") context.rect(this.x, this.y, this.#width, this.#height);
+        // else context.fillRect(this.x, this.y, this.#width, this.#height);
 
-        context.restore();
+        // context.restore();
+        if (arguments.length == 2 && arguments[1] == "mask") super.draw(context, arguments[1]);
+        else super.draw(context);
     }
 }
 
@@ -755,10 +802,16 @@ class Rectangle extends Polygon
 
 class Circle extends Shape
 {
-    constructor(radius)
+    constructor(radius, x, y)
     {
         super();
         this.radius = radius;
+
+        if (arguments.length > 2)
+        {
+            this.x = x;
+            this.y = y;
+        }
     }
 
     getBounds()
@@ -817,148 +870,106 @@ class Circle extends Shape
 class Sprite extends Shape
 {
     #img = new Image();
-    #hitbox;
-    #imageArea;
+    #area;
 
-    constructor(src, width, height)
+    constructor(img, area, scaleX, scaleY)
     {
         super();
-        this.#img.src = src;
-        this.showHitbox = false;
-        this.doesHitboxScale = true;
 
-        if (arguments.length >= 3)
+        if (img instanceof String || typeof img == "string") 
         {
-            this.width = width;
-            this.height = height;
+            this.#area = new Rectangle(100, 100);
+            this._points = this.#area._points;
+            this._lines = this.#area._lines;
+            this.#img.src = img;
         }
-        else
+        else if (img instanceof Image) this.#img = img;
+
+        var self = this;
+        var args = arguments;
+
+        this.#img.onload = function ()
         {
-            this.width = this.#img.width;
-            this.height = this.#img.height;
+            console.log("loaded");
+            if (args.length > 1) 
+            {
+                self.#area = area;
+            }
+            else
+            {
+                self.#area = new Rectangle(self.#img.width, self.#img.height);
+            }
+            
+            self._points = self.#area._points;
+            self._lines = self.#area._lines;
+
+            if (args.length > 3)
+            {
+                self.setScale(scaleX, scaleY);
+
+                self.#img.width *= scaleX;
+                self.#img.height *= scaleY;
+
+                self.#area.setScale(scaleX, scaleY);
+            }
+
+            self.#area.colour = 'rgba(0, 0, 0, 0.0)';
         }
-
-
-        this.#hitbox = new Rectangle(this.width, this.height, 0, 0);
-        this.#hitbox.colour = 'rgba(255, 0, 0, 0.4)';
-
-        this.#imageArea = new Rectangle(this.width, this.height);
-        this.#imageArea.colour = 'rgba(0, 0, 0, 0.0)';
-        this.setImageDimensions(0, 0, this.width, this.height);
-    }
-
-    setImageDimensions(x, y, width, height)
-    {
-        this.sourceX = x;
-        this.sourceY = y;
-        this.sourceWidth = width;
-        this.sourceHeight = height;
-    }
-
-    setHitbox(shape)
-    {
-        if (shape instanceof Shape && shape.constructor.name != "Shape")
-        {
-            this.#hitbox = shape;
-            if (this.#hitbox.colour.toLowerCase() == "black")
-                this.#hitbox.colour = 'rgba(255, 0, 0, 0.4)';
-            return true;
-        }
-        else return false;
     }
 
     getHitbox()
     {
-        return this.#hitbox;
-    }
-
-    setImageArea(shape)
-    {
-        if (shape instanceof Shape && shape.constructor.name != "Shape")
+        if (this.#area instanceof Polygon)
         {
-            this.#imageArea = shape;
-            return true;
+            let clone = new Polygon(this.#area.json, this.x, this.y);
+            clone._direction = this._direction;
+            return clone;
         }
-        else return false;
-    }
-
-    getImageArea()
-    {
-        return this.#imageArea;
-    }
-
-    getSize()
-    {
-        return { width: this.width, height: this.height }
-    }
-
-    setSize(width, height)
-    {
-        if (this.doesHitboxScale)
+        else if (this.#area instanceof Circle)
         {
-            this.#hitbox.width *= (width / this.width);
-            this.#hitbox.height *= (height / this.height);
+            let clone = new Circle(this.#area.radius, this.x, this.y);
+            clone._direction = this._direction;
+            return clone;
         }
-        this.width = width;
-        this.height = height;
-        this.#hitbox = new Rectangle(this.width, this.height, 0, 0);
     }
 
-    setWidth(width)
+    setTextureArea(area)
     {
-        if (this.doesHitboxScale)
+        if (area instanceof Shape)
         {
-            this.#hitbox.width *= (width / this.width);
+            this.#area = area;
+            return this.#area;
         }
-        this.width = width;
-        this.#hitbox = new Rectangle(this.width, this.height, 0, 0);
-    }
-
-    setHeight(height)
-    {
-        if (this.doesHitboxScale)
-        {
-            this.#hitbox.height *= (height / this.height);
-        }
-        this.height = height;
-        this.#hitbox = new Rectangle(this.width, this.height, 0, 0);
-    }
-
-    setImage(img)
-    {
-        if (typeof img == "string") this.#img.src = img;
-        else if (typeof img == "object" && img.constructor.name == "HTMLImageElement") this.#img = img;
-        else return false;
-        return true;
-    }
-
-    intersects(shape)
-    {
-        return this.#hitbox.intersects(shape);
+        return null
     }
 
     draw(context)
     {
-        // Update hitbox information
-        this.#hitbox.x += this.x;
-        this.#hitbox.y += this.y;
-
+        //here
         context.save();
+        let areaX = this.#area.x;
+        let areaY = this.#area.y;
 
-        context.translate(-this.#imageArea._points[0]().x, -this.#imageArea._points[0]().y);
-        this.#imageArea.draw(context, "mask");
+        this.#area.x = this.x;
+        this.#area.y = this.y;
+        
+        context.beginPath();
+
+        let o = this.getCenter()
+        context.translate(o.x, o.y);
+        context.rotate(this._direction * Math.PI / 180);
+        context.translate(-o.x, -o.y);
+
+        this.#area.draw(context, "mask");
+
+        this.#area.x = areaX;
+        this.#area.y = areaY;
+
         context.clip();
-        context.drawImage(this.#img, this.x, this.y, this.#img.width, this.#img.height);
-        // context.drawImage(this.#img, this.sourceX, this.sourceY, this.sourceWidth, this.sourceHeight, this.x, this.y, this.#img.width, this.#img.height);
+        context.drawImage(this.#img, this.x - areaX, this.y - areaY);
 
+        context.setTransform(1, 0, 0, 1, 0, 0);
         context.restore();
-
-        // Check if hitbox is shown
-        if (this.showHitbox) this.#hitbox.draw(context);
-
-        // Update hitbox information
-        this.#hitbox.x -= this.x;
-        this.#hitbox.y -= this.y;
     }
 }
 
