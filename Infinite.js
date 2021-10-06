@@ -1,17 +1,16 @@
 // TODO list
 // -------------------------------------------------------------------
-// DONE Finish Polygon class
-// DONE Create draw/render method for the Polygon class
-// DONE Concave Polygon detection when a shape is inside it doesn't work yet
+// CURRENT Add/Improve touch events/controls to Events class
 
-// TEST contains() method for sprite and polygon classes
-
-// TODO Fix/Restructer the Sprite class again to make it easier to use
-// TODO Add touch events/controls to Events class
+// TODO Create way to map touch controls to KBMS so code can be
+//      written once and made cross platform easily 
 // TODO Add touch joysticks for touch game support
 // TODO Flesh out Util class with more backend functions
 // TODO Rewrite/add more feature to the DisplayText class
-// TODO Move isConvexPoly out of intersects and run it after shape is modified to reduce calls
+// TODO Move isConvexPoly out of intersects and run it after shape is
+//      modified to reduce calls
+// TODO Add multi-touch support
+// TODO Add swipe direction detection
 
 import 'https://unpkg.com/intersects/umd/intersects.min.js';
 import { isPolygonConvex } from './PolygonDetect.js';
@@ -168,7 +167,6 @@ class Canvas
 
 class Events 
 {
-    #lastKey;
     #mouse = {
         position: {
             x: null,
@@ -185,22 +183,36 @@ class Events
             other: false
         }
     };
-    #touch;
+    #touch = {
+        isTouch: false,
+        position: {
+            x: null,
+            y: null
+        },
+        change: {
+            x: null,
+            y: null
+        }
+    };
 
     #interval = 50;
     #lastCall = 0;
+
+    #lastKeyDown;
     #lastKeyPress = 'p';
 
     constructor(canvas, options)
     {
         this.pressedKeys = {};
         var self = this;
+        let HTMLCanvas = canvas.getHTMLCanvas();
+
         if (options['keyboard'])
         {
             window.onkeydown = function (e)
             {
                 self.pressedKeys[e.key.toLowerCase()] = true;
-                self.#lastKey = e.key.toLowerCase();
+                self.#lastKeyDown = e.key.toLowerCase();
                 self.#lastKeyPress = '';
             };
             window.onkeyup = function (e)
@@ -215,7 +227,6 @@ class Events
         }
         if (options['mouse'])
         {
-            let HTMLCanvas = canvas.getHTMLCanvas();
             HTMLCanvas.oncontextmenu = function (e) { e.preventDefault(); e.stopPropagation(); }
             window.onmousemove = function (e)
             {
@@ -275,7 +286,66 @@ class Events
         }
         if (options['touch'])
         {
-            throw 'Touch events are not yet finished';
+            window.ontouchstart = function(evt)
+            {
+                let e = evt.changedTouches[0];
+
+                var rect = HTMLCanvas.getBoundingClientRect();
+                let x = Math.round((e.clientX - rect.left) / (rect.right - rect.left) * HTMLCanvas.width);
+                let y = Math.round((e.clientY - rect.top) / (rect.bottom - rect.top) * HTMLCanvas.height);
+                if (x <= 0) x = 0;
+                if (y <= 0) y = 0;
+                self.#touch.isTouch = true;
+                self.#touch.change = {
+                    x: x - self.#touch.position.x,
+                    y: y - self.#touch.position.y
+                };
+                self.#touch.position = {
+                    x: x,
+                    y: y
+                };
+            }
+            window.ontouchend = function(evt)
+            {
+                let e = evt.changedTouches[0];
+
+                var rect = HTMLCanvas.getBoundingClientRect();
+                let x = Math.round((e.clientX - rect.left) / (rect.right - rect.left) * HTMLCanvas.width);
+                let y = Math.round((e.clientY - rect.top) / (rect.bottom - rect.top) * HTMLCanvas.height);
+                if (x <= 0) x = 0;
+                if (y <= 0) y = 0;
+
+                if (evt.targetTouches.length == 0) self.#touch.isTouch = false;
+                self.#touch.change = {
+                    x: x - self.#touch.position.x,
+                    y: y - self.#touch.position.y
+                };
+                self.#touch.position = {
+                    x: x,
+                    y: y
+                };
+            }
+            window.ontouchmove = function(evt)
+            {
+                let e = evt.changedTouches[0];
+
+                var rect = HTMLCanvas.getBoundingClientRect();
+                let x = Math.round((e.clientX - rect.left) / (rect.right - rect.left) * HTMLCanvas.width);
+                let y = Math.round((e.clientY - rect.top) / (rect.bottom - rect.top) * HTMLCanvas.height);
+                if (x <= 0) x = 0;
+                if (y <= 0) y = 0;
+                
+                self.#touch.isTouch = true;
+                self.#touch.change = {
+                    x: x - self.#touch.position.x,
+                    y: y - self.#touch.position.y
+                };
+                self.#touch.position = {
+                    x: x,
+                    y: y
+                };
+            }
+            // throw 'Touch events are not yet finished';
         }
         if (options['debug'])
         {
@@ -304,7 +374,12 @@ class Events
 
     getLastKeyPressed()
     {
-        return this.#lastKey;
+        return this.#lastKeyDown;
+    }
+
+    getKeyboard()
+    {
+        return this.pressedKeys;
     }
 
     getMouse()
@@ -320,6 +395,11 @@ class Events
     setCallsPerSecond(number)
     {
         this.#interval = 1000.0 / number;
+    }
+
+    cross()
+    {
+
     }
 }
 
@@ -900,7 +980,7 @@ class Sprite extends Shape
             {
                 self.#area = new Rectangle(self.#img.width, self.#img.height);
             }
-            
+
             self._points = self.#area._points;
             self._lines = self.#area._lines;
 
@@ -955,7 +1035,7 @@ class Sprite extends Shape
 
         this.#area.x = this.x;
         this.#area.y = this.y;
-        
+
         context.beginPath();
 
         this.setCenter(this.#area._center.x, this.#area._center.y);
