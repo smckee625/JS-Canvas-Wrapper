@@ -396,11 +396,6 @@ class Events
     {
         this.#interval = 1000.0 / number;
     }
-
-    cross()
-    {
-
-    }
 }
 
 
@@ -692,16 +687,16 @@ class Polygon extends Shape
                     {
                         let p1 = this._lines[i]()[0]();
                         let p2 = this._lines[i]()[1]();
-                        let p3 = shape._lines[i]()[0]();
-                        let p4 = shape._lines[i]()[1]();
+                        let p3 = shape._lines[j]()[0]();
+                        let p4 = shape._lines[j]()[1]();
 
                         if (Intersects.lineLine(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y, p4.x, p4.y, 1, 1))
                         {
                             return true;
                         }
                     };
-                    return false;
                 };
+                return false;
             }
         }
         else if (shape instanceof Circle)
