@@ -286,7 +286,7 @@ class Events
         }
         if (options['touch'])
         {
-            window.ontouchstart = function(evt)
+            window.ontouchstart = function (evt)
             {
                 let e = evt.changedTouches[0];
 
@@ -305,7 +305,7 @@ class Events
                     y: y
                 };
             }
-            window.ontouchend = function(evt)
+            window.ontouchend = function (evt)
             {
                 let e = evt.changedTouches[0];
 
@@ -325,7 +325,7 @@ class Events
                     y: y
                 };
             }
-            window.ontouchmove = function(evt)
+            window.ontouchmove = function (evt)
             {
                 let e = evt.changedTouches[0];
 
@@ -334,7 +334,7 @@ class Events
                 let y = Math.round((e.clientY - rect.top) / (rect.bottom - rect.top) * HTMLCanvas.height);
                 if (x <= 0) x = 0;
                 if (y <= 0) y = 0;
-                
+
                 self.#touch.isTouch = true;
                 self.#touch.change = {
                     x: x - self.#touch.position.x,
@@ -407,6 +407,40 @@ class Util
         setTimeout(func, ms);
     }
 
+    static repeat(func, ms = 100, condition)
+    {
+        if (arguments.length < 3)
+        {
+            return setInterval(func, ms);
+        }
+        else
+        {
+            if (typeof condition == "number")
+            {
+                var num = 0;
+                var val = setInterval(() =>
+                {
+                    func();
+                    if (++num == condition) clearInterval(val);
+                }, ms);
+                return val;
+            }
+            else if (typeof condition == "function")
+            {
+                var val = setInterval(() =>
+                {
+                    func();
+                    if (condition()) 
+                    {
+                        clearInterval(val);
+                    }
+                }, ms);
+                return val;
+            }
+            return setInterval(func, ms);
+        }
+    }
+
     static random(start, end)
     {
         return Math.round(Math.random() * Math.abs(end - start)) + start;
@@ -421,24 +455,6 @@ class Util
             arr.push(objArr[i]().y);
         }
         return arr;
-    }
-
-    static rotatePoint(pt, center, angle)
-    {
-        if (angle != 0)
-        {
-            let angle = angle * (Math.PI / 180); // Convert to radians
-
-            let tempX = pt.x - center.x;
-            let tempY = pt.y - center.y;
-
-            let rotatedX = Math.cos(angle) * tempX - Math.sin(angle) * tempY + center.x;
-
-            let rotatedY = Math.sin(angle) * tempX + Math.cos(angle) * tempY + center.y;
-
-            return { x: rotatedX, y: rotatedY };
-        }
-        else return pt;
     }
 }
 
