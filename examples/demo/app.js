@@ -30,6 +30,10 @@ Util.repeat(() =>
         p.setScale(-1, 1);
         rectArea.x += 80;
     }
+    else
+    {
+        rectArea.x = 13;
+    }
     // Reset animation position
     if (rectArea.x > 400) rectArea.x = 13;
 }, 140);

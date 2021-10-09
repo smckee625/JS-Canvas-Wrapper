@@ -1,9 +1,8 @@
 // TODO list
 // -------------------------------------------------------------------
-// CURRENT Add Camera class to make more complex layouts easier
+// Current Refactor everything specifically; class constructors should be
+//         given proper error detection for their argument list
 
-// TODO Refactor everything specifically; class constructors should be
-//      given proper error detection for their argument list
 // TODO Create way to map touch controls to KBMS so code can be
 //      written once and made cross platform easily 
 // TODO Improve/Finish touch events/controls in Events class - currently
@@ -13,7 +12,8 @@
 // TODO Rewrite/add more feature to the DisplayText class
 // TODO Move isConvexPoly out of intersects and run it after shape is
 //      modified to reduce calls
-// TODO Stop using CDN to get intersects library
+// TODO Look through code for ways to improve performance
+// TODO Add multiple canvas support so UI can be separate
 
 // MAYBE Add integrated network support using websockets or socket.io
 // MAYBE Use OffscreenCanvas to offload rendering to worker thread for performance
