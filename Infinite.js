@@ -16,8 +16,9 @@
 // TODO Stop using CDN to get intersects library
 
 // MAYBE Add integrated network support using websockets or socket.io
+// MAYBE Use OffscreenCanvas to offload rendering to worker thread for performance
 
-import 'https://unpkg.com/intersects/umd/intersects.min.js';
+import './Intersects/umd/intersects.min.js';
 import { isPolygonConvex } from './PolygonDetect.js';
 
 document.body.style = 'margin: 0%; padding: 0%;';
