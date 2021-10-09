@@ -1,16 +1,21 @@
 // TODO list
 // -------------------------------------------------------------------
-// CURRENT Add/Improve touch events/controls to Events class
+// CURRENT Add Camera class to make more complex layouts easier
 
+// TODO Refactor everything specifically; class constructors should be
+//      given proper error detection for their argument list
 // TODO Create way to map touch controls to KBMS so code can be
 //      written once and made cross platform easily 
+// TODO Improve/Finish touch events/controls in Events class - currently
+//      way below standard
 // TODO Add touch joysticks for touch game support
 // TODO Flesh out Util class with more backend functions
 // TODO Rewrite/add more feature to the DisplayText class
 // TODO Move isConvexPoly out of intersects and run it after shape is
 //      modified to reduce calls
-// TODO Add multi-touch support
-// TODO Add swipe direction detection
+// TODO Stop using CDN to get intersects library
+
+// MAYBE Add integrated network support using websockets or socket.io
 
 import 'https://unpkg.com/intersects/umd/intersects.min.js';
 import { isPolygonConvex } from './PolygonDetect.js';
@@ -20,17 +25,19 @@ class Canvas
 {
     #canvas;
     #ctx;
+    #camera;
+
     #fps;
     #fpsInterval;
     #fpsTimer;
     #lastCallTime;
 
-    constructor(width, height)
+    constructor(width = window.innerWidth, height = window.innerHeight)
     {
         this.#canvas = document.getElementById("Infinite");
         this.#canvas.style = 'margin: 0%; padding: 0%;'
         this.#canvas.tabIndex = '1';
-        this.#ctx = this.#canvas.getContext("2d");
+        this.#ctx = this.#canvas.getContext("2d", { alpha: false });
 
         this.#fpsTimer = document.createElement("div");
         this.#fpsTimer.style.position = 'absolute';
@@ -38,8 +45,7 @@ class Canvas
         this.#fpsTimer.style.fontSize = '24px';
         document.body.appendChild(this.#fpsTimer);
 
-        if (arguments.length === 0) this.setSize(window.innerWidth, window.innerHeight);
-        else this.setSize(width, height);
+        this.setSize(width, height);
 
         this.colour = 'black';
         this.#canvas.style.backgroundColor = this.colour;
@@ -49,10 +55,14 @@ class Canvas
             self.setSize(window.innerWidth, window.innerHeight);
         }
         this.fpsVisible(true);
+
+        this.#camera = new Camera(this.width, this.height);
     }
 
     clear()
     {
+        this.#ctx.setTransform(1, 0, 0, 1, 0, 0);
+
         this.#ctx.beginPath();
         this.#ctx.clearRect(0, 0, this.width, this.height);
         if (this.#ctx.fillStyle != this.colour)
@@ -61,6 +71,14 @@ class Canvas
             this.#ctx.fillStyle = this.colour;
             this.#ctx.fill();
         }
+
+        let cPos = this.#camera.getPosition();
+        let cRot = this.#camera.getRotation();
+        let cSize = this.#camera.getSize();
+
+        this.#ctx.translate(-cPos.x, -cPos.y);
+        this.#ctx.scale(this.width / cSize.width, this.height / cSize.height);
+        this.#ctx.rotate(cRot * Math.PI / 180);
     }
 
     draw(shape)
@@ -107,6 +125,11 @@ class Canvas
     onStart(func) { this.#start = func; }
     onUpdate(func) { this.#update = func; }
     onEnd(func) { this.#end = func; }
+
+    getCamera()
+    {
+        return this.#camera;
+    }
 
     getHTMLCanvas()
     {
@@ -395,6 +418,60 @@ class Events
     setCallsPerSecond(number)
     {
         this.#interval = 1000.0 / number;
+    }
+}
+
+
+
+class Camera
+{
+    #width; #height;
+    #x; #y;
+    #rotation;
+
+    constructor(width = window.innerWidth, height = window.innerHeight, x = 0, y = 0, rotation = 0)
+    {
+        this.setPosition(x, y);
+        this.setSize(width, height);
+        this.setRotation(rotation);
+    }
+
+    setPosition(x, y)
+    {
+        this.#x = x;
+        this.#y = y;
+    }
+
+    getPosition()
+    {
+        return { x: this.#x, y: this.#y };
+    }
+
+    setSize(width, height)
+    {
+        this.#width = width;
+        this.#height = height;
+    }
+
+    move(x = 0, y = 0)
+    {
+        this.#x += x;
+        this.#y += y;
+    }
+
+    getSize()
+    {
+        return { width: this.#width, height: this.#height };
+    }
+
+    setRotation(rotation)
+    {
+        this.#rotation = rotation % 360;
+    }
+
+    getRotation()
+    {
+        return this.#rotation;
     }
 }
 
@@ -773,7 +850,6 @@ class Polygon extends Shape
     {
         if (arguments.length == 2 && arguments[1] == "mask")
         {
-            // ctx.fillStyle = 'red';
             ctx.moveTo(this._points[0]().x, this._points[0]().y);
             this._points.forEach(function (point, i)
             {
@@ -781,7 +857,6 @@ class Polygon extends Shape
                     ctx.lineTo(point().x, point().y);
             });
             ctx.closePath();
-            // ctx.fill();
         }
         else
         {
@@ -976,7 +1051,32 @@ class Sprite extends Shape
             this._lines = this.#area._lines;
             this.#img.src = img;
         }
-        else if (img instanceof Image) this.#img = img;
+        else if (img instanceof Image)
+        {
+            this.#img = img;
+            console.log("loaded");
+            if (arguments.length > 1) 
+            {
+                this.#area = area;
+            }
+            else
+            {
+                this.#area = new Rectangle(this.#img.width, this.#img.height);
+            }
+
+            this._points = this.#area._points;
+            this._lines = this.#area._lines;
+
+            if (arguments.length > 3)
+            {
+                this.setScale(scaleX, scaleY);
+
+                this.#img.width *= scaleX;
+                this.#img.height *= scaleY;
+
+                this.#area.setScale(scaleX, scaleY);
+            }
+        }
 
         var self = this;
         var args = arguments;
@@ -1041,9 +1141,14 @@ class Sprite extends Shape
         return null
     }
 
+    flip(horizontal=false, vertical=false)
+    {
+        if (horizontal) this.scale.x = -this.scale.x;
+        if (vertical) this.scale.y = -this.scale.y;
+    }
+
     draw(context)
     {
-        //here
         context.save();
         let areaX = this.#area.x;
         let areaY = this.#area.y;
@@ -1052,6 +1157,7 @@ class Sprite extends Shape
         this.#area.y = this.y;
 
         context.beginPath();
+
 
         this.setCenter(this.#area._center.x, this.#area._center.y);
         let o = this.getCenter();
@@ -1069,15 +1175,17 @@ class Sprite extends Shape
             this.#area.colour = 'rgba(0, 0, 0, 0.0)';
             this.#area.draw(context, "mask");
             this.#area.colour = temp;
-
-            context.clip();
-            context.drawImage(this.#img, this.x - areaX, this.y - areaY);
         }
+
+        context.scale(this.scale.x, this.scale.y);
+        if (this.scale.x == -1) context.translate(-(this.#area.x * 2 + this.#area.getWidth()), 0);
+        if (this.scale.y == -1) context.translate(-(this.#area.y * 2 + this.#area.getHeight()), 0);
+        context.clip();
+        context.drawImage(this.#img, (this.x - areaX), (this.y - areaY));
 
         this.#area.x = areaX;
         this.#area.y = areaY;
 
-        context.setTransform(1, 0, 0, 1, 0, 0);
         context.restore();
     }
 }
