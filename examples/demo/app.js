@@ -1,71 +1,61 @@
-import { Canvas, Circle, Events, Line, Polygon, Rectangle, Sprite, Util } from '../../Infinite.js';
+import { Canvas, Events, Rectangle, Sprite, Util } from '../../Infinite.js';
 
+// Create Canvas
 var canvas = new Canvas();
 canvas.colour = 'lightblue';
 
-var events = new Events(canvas, { keyboard: true, mouse: true, touch: false, debug: false });
+// Create Event system
+var events = new Events(canvas, { keyboard: true, mouse: false, touch: false, debug: false });
 
-// Texture Areas
-var triArea = new Polygon([
-    { x: 50, y: 0 },
-    { x: 100, y: 100 },
-    { x: 0, y: 100 }
-], 100, 100);
-var cirArea = new Circle(60, 100, 100);
+// Texture Area
 var rectArea = new Rectangle(55, 67, 13, 115);
 
 // Random Rectangle
-var rect = new Rectangle(10, 10, -5, -5);
+var center = new Rectangle(10, 10, -5, -5);
 
-// player Sprite
-var num = 200;
-var p = [];
-var img = new Image();
-img.src = 'spritesheet.png';
-img.onload = () =>
-{
-    for (let i = 0; i < num; i++)
-    {
-        p.push(new Sprite(img, rectArea));
-    }
+// Player Sprite
+var p = new Sprite('spritesheet.png', rectArea);
 
+// Animation runs every 140ms
 Util.repeat(() =>
 {
     if (events.isKeyDown("d"))
     {
-        for (let i = 0; i < num; i++) p[i].setScale(1, 1);
+        p.setScale(1, 1);
         rectArea.x += 80;
     }
     else if (events.isKeyDown("a"))
     {
-        for (let i = 0; i < num; i++) p[i].setScale(-1, 1);
+        // Flip sprite
+        p.setScale(-1, 1);
         rectArea.x += 80;
     }
+    // Reset animation position
     if (rectArea.x > 400) rectArea.x = 13;
 }, 140);
 
+// Game Loop
 canvas.onUpdate(async () =>
 {
-    if (events.isKeyDown("w")) for (let i = 0; i < num; i++) p[i].y--;
-    if (events.isKeyDown("a")) for (let i = 0; i < num; i++) p[i].x--;
-    if (events.isKeyDown("s")) for (let i = 0; i < num; i++) p[i].y++;
-    if (events.isKeyDown("d")) for (let i = 0; i < num; i++) p[i].x++;
+    // Movement & Rotation
+    if (events.isKeyDown("w")) p.y--;
+    if (events.isKeyDown("a")) p.x--;
+    if (events.isKeyDown("s")) p.y++;
+    if (events.isKeyDown("d")) p.x++;
+    if (events.wasKeyPressed("r")) p.turn(30);
 
-    if (events.wasKeyPressed("r")) for (let i = 0; i < num; i++) p[i].turn(30);
-    if (events.wasKeyPressed("t")) rect.turn(30);
+    // Center camera on player
+    canvas.getCamera().setPosition(p.x - canvas.width / 2 + 60, p.y - canvas.height / 2 + 60);
 
-    canvas.getCamera().setPosition(p[0].x - canvas.width / 2 + 60, p[0].y - canvas.height / 2 + 60);
+    // Detect intersect
+    if (center.intersects(p)) center.colour = 'red';
+    else if (center.colour == 'red') center.colour = 'black';
 
-    for (let i = 0; i < num; i++) 
-    {
-        if (rect.intersects(p[i])) rect.colour = 'red';
-        else if (rect.colour == 'red') rect.colour = 'black';
-    }
-
+    // Display
     canvas.clear();
-    canvas.draw(rect);
-    for (let i = 0; i < num; i++) canvas.draw(p[i]);
+    canvas.draw(center);
+    canvas.draw(p);
 });
 
+// Run game
 canvas.run();
-}
