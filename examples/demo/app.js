@@ -14,7 +14,7 @@ var rectArea = new Rectangle(55, 67, 13, 115);
 var center = new Rectangle(10, 10, -5, -5);
 
 // Player Sprite
-var p = new Sprite('spritesheet.png', rectArea);
+var p = await new Sprite('spritesheet.png', rectArea);
 
 // Animation runs every 140ms
 Util.repeat(() =>

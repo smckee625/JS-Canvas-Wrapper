@@ -1035,27 +1035,73 @@ class Circle extends Shape
 
 
 
+class Texture
+{
+    #texture = new Image();
+
+    constructor(src)
+    {
+        if (src instanceof String || typeof src == "string")
+        {
+            return (async () =>
+            {
+                this.#texture = await this.loadTexture(src);
+    
+                return this;
+            })();
+        }
+    }
+    
+    loadTexture(src)
+    {
+        return new Promise((resolve, reject) =>
+        {
+            let img = new Image();
+            img.onload = () => resolve(img);
+            img.onerror = reject;
+            img.src = src;
+        })
+    }
+
+    getImage()
+    {
+        return this.#texture;
+    }
+}
+
+
+
 class Sprite extends Shape
 {
     #img = new Image();
     #area;
     #showHitbox = false;
 
-    constructor(img, area, scaleX, scaleY)
+    constructor(img, area)
     {
         super();
+        var args = arguments;
 
-        if (img instanceof String || typeof img == "string") 
+        if (img instanceof String || typeof img == "string")
         {
-            this.#area = new Rectangle(100, 100);
-            this._points = this.#area._points;
-            this._lines = this.#area._lines;
-            this.#img.src = img;
+            return (async () =>
+            {
+                this.#img = (await new Texture(img)).getImage();
+    
+                if (args.length > 1) 
+                {
+                    this.#area = area;
+                }
+                else
+                {
+                    this.#area = new Rectangle(this.#img.width, this.#img.height);
+                }
+                return this;
+            })();
         }
-        else if (img instanceof Image)
+        else if (img instanceof Texture)
         {
-            this.#img = img;
-            console.log("loaded");
+            this.#img = img.getImage();
             if (arguments.length > 1) 
             {
                 this.#area = area;
@@ -1063,48 +1109,6 @@ class Sprite extends Shape
             else
             {
                 this.#area = new Rectangle(this.#img.width, this.#img.height);
-            }
-
-            this._points = this.#area._points;
-            this._lines = this.#area._lines;
-
-            if (arguments.length > 3)
-            {
-                this.setScale(scaleX, scaleY);
-
-                this.#img.width *= scaleX;
-                this.#img.height *= scaleY;
-
-                this.#area.setScale(scaleX, scaleY);
-            }
-        }
-
-        var self = this;
-        var args = arguments;
-
-        this.#img.onload = function ()
-        {
-            console.log("loaded");
-            if (args.length > 1) 
-            {
-                self.#area = area;
-            }
-            else
-            {
-                self.#area = new Rectangle(self.#img.width, self.#img.height);
-            }
-
-            self._points = self.#area._points;
-            self._lines = self.#area._lines;
-
-            if (args.length > 3)
-            {
-                self.setScale(scaleX, scaleY);
-
-                self.#img.width *= scaleX;
-                self.#img.height *= scaleY;
-
-                self.#area.setScale(scaleX, scaleY);
             }
         }
     }
