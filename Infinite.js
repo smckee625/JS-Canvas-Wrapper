@@ -429,6 +429,7 @@ class Camera
     #width; #height;
     #x; #y;
     #rotation;
+    #shape = null;
 
     constructor(width = window.innerWidth, height = window.innerHeight, x = 0, y = 0, rotation = 0)
     {
@@ -443,8 +444,17 @@ class Camera
         this.#y = y;
     }
 
+    track(shape)
+    {
+        this.#shape = shape;
+    }
+
     getPosition()
     {
+        if (this.#shape != null) return {
+            x: this.#shape.x - this.#width / 2 + this.#shape.getWidth() / 2,
+            y: this.#shape.y - this.#height / 2 + this.#shape.getHeight() / 2
+        };
         return { x: this.#x, y: this.#y };
     }
 
@@ -844,8 +854,8 @@ class Polygon extends Shape
         else return pt;
     }
 
-    getWidth() { return this.#dimensions.maxX - this.#dimensions.minX; }
-    getHeight() { return this.#dimensions.maxY - this.#dimensions.minY; }
+    getWidth() { return (this.#dimensions.maxX - this.#dimensions.minX) * this.scale.x; }
+    getHeight() { return (this.#dimensions.maxY - this.#dimensions.minY) * this.scale.y; }
 
     draw(ctx)
     {
@@ -1077,7 +1087,7 @@ class Sprite extends Shape
     #area;
     #showHitbox = false;
 
-    constructor(img, area)
+    constructor(img, area, scaleX, scaleY)
     {
         super();
         var args = arguments;
@@ -1113,6 +1123,12 @@ class Sprite extends Shape
         }
     }
 
+    setScale(scaleX, scaleY)
+    {
+        this.scale.x = scaleX;
+        this.scale.y = scaleY;
+    }
+
     showHitbox(value = true)
     {
         this.#showHitbox = value;
@@ -1125,6 +1141,7 @@ class Sprite extends Shape
             let clone = new Polygon(this.#area.json, this.x, this.y);
             clone._direction = this._direction;
             clone._center = this._center;
+            clone.scale = this.scale;
             return clone;
         }
         else if (this.#area instanceof Circle)
@@ -1132,8 +1149,19 @@ class Sprite extends Shape
             let clone = new Circle(this.#area.radius, this.x, this.y);
             clone._direction = this._direction;
             clone._center = this.#area._center;
+            clone.scale = this.scale;
             return clone;
         }
+    }
+
+    getWidth()
+    {
+        return this.getHitbox().getWidth();
+    }
+
+    getHeight()
+    {
+        return this.getHitbox().getHeight();
     }
 
     setTextureArea(area)
@@ -1146,7 +1174,7 @@ class Sprite extends Shape
         return null
     }
 
-    flip(horizontal=false, vertical=false)
+    flip(horizontal = false, vertical = false)
     {
         if (horizontal) this.scale.x = -this.scale.x;
         if (vertical) this.scale.y = -this.scale.y;
@@ -1163,12 +1191,17 @@ class Sprite extends Shape
 
         context.beginPath();
 
-
         this.setCenter(this.#area._center.x, this.#area._center.y);
         let o = this.getCenter();
         context.translate(o.x, o.y);
         context.rotate(this._direction * Math.PI / 180);
         context.translate(-o.x, -o.y);
+
+
+        if (this.scale.x == -1) context.translate(this.#area.getWidth(), 0);
+        if (this.scale.y == -1) context.translate(0, this.#area.getHeight());
+        context.translate(-(this.x * (this.scale.x - 1)), -(this.y * (this.scale.y - 1)));
+        context.scale(this.scale.x, this.scale.y);
 
         if (this.#showHitbox) 
         {
@@ -1182,9 +1215,6 @@ class Sprite extends Shape
             this.#area.colour = temp;
         }
 
-        context.scale(this.scale.x, this.scale.y);
-        if (this.scale.x == -1) context.translate(-(this.#area.x * 2 + this.#area.getWidth()), 0);
-        if (this.scale.y == -1) context.translate(-(this.#area.y * 2 + this.#area.getHeight()), 0);
         context.clip();
         context.drawImage(this.#img, (this.x - areaX), (this.y - areaY));
 
@@ -1224,4 +1254,4 @@ class DisplayText
     }
 }
 
-export { Canvas, Events, Util, Line, Polygon, Rectangle, Circle, Sprite, DisplayText };
+export { Canvas, Events, Util, Line, Polygon, Rectangle, Circle, Sprite, DisplayText, Texture };
