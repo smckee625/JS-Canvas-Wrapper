@@ -544,6 +544,56 @@ class Util
         }
         return arr;
     }
+
+    static calculateAllCrossProduct(points)
+    {
+        var lastSign = null;
+        for (var i = 2; i < points.length; i++)
+        {
+            // Calculate crossproduct from 3 consecutive points
+            var crossproduct = Util.calculateCrossProduct(points[i - 2](), points[i - 1](), points[i]());
+            var currentSign = Math.sign(crossproduct);
+            if (lastSign == null)
+            {
+                // Last sign init
+                lastSign = currentSign;
+            }
+
+            if (lastSign !== currentSign)
+            {
+                // Different sign in cross products,no need to check the remaining points --> concave polygon --> return function
+                return false;
+            }
+            lastSign = currentSign;
+        }
+
+        // First point must check between second and last point, this is the last 3 points that can break convexity
+        var crossproductFirstPoint = Util.calculateCrossProduct(points[points.length - 2](), points[0](), points[1]());
+
+        // I changed this because when a straight line had 3 points in it instead of the typical 2 it would return not a convex polygon
+        return lastSign >= 0 && Math.sign(crossproductFirstPoint) >= 0;
+        // return checkCrossProductSign(lastSign, Math.sign(crossproductFirstPoint));
+    }
+
+    static calculateCrossProduct(p1, p2, p3)
+    {
+        var dx1 = p2.x - p1.x;
+        var dy1 = p2.y - p1.y;
+        var dx2 = p3.x - p2.x;
+        var dy2 = p3.y - p2.y;
+
+        var zcrossproduct = dx1 * dy2 - dy1 * dx2;
+        return zcrossproduct;
+    }
+
+    static isPolygonConvex(points)
+    {
+        // Added this because it doesn't check the first and last points angle
+        points.push(points[0]);
+        let val = Util.calculateAllCrossProduct(points);
+        points.pop();
+        return val;
+    }
 }
 
 
@@ -717,12 +767,12 @@ class Polygon extends Shape
             else if (y < this.#dimensions.minY) this.#dimensions.minY = y;
         }
 
-        this._center.x = (this.#dimensions.maxX - this.#dimensions.minX) / 2 * this.scale.x;
-        this._center.y = (this.#dimensions.maxY - this.#dimensions.minY) / 2 * this.scale.y;
+        this._center.x = (this.#dimensions.maxX - this.#dimensions.minX) / 2 * Math.abs(this.scale.x);
+        this._center.y = (this.#dimensions.maxY - this.#dimensions.minY) / 2 * Math.abs(this.scale.y);
 
         if (arguments.length == 2)
         {
-            this._points.push(() => { return this.rotatePoint({ x: this.x + x, y: this.y + y }) });
+            this._points.push(() => { return this.rotatePoint({ x: this.x + (x * Math.abs(this.scale.x)), y: this.y + (y * Math.abs(this.scale.y)) }) });
             return true;
         }
         return false;
@@ -745,7 +795,7 @@ class Polygon extends Shape
             if (point.y > this.#dimensions.maxY) this.#dimensions.maxY = point.y;
             else if (point.y < this.#dimensions.minY) this.#dimensions.minY = point.y;
 
-            this._points.push(() => { return this.rotatePoint({ x: this.x + (point.x * this.scale.x), y: this.y + (point.y * this.scale.y) }) });
+            this._points.push(() => { return this.rotatePoint({ x: this.x + (point.x * Math.abs(this.scale.x)), y: this.y + (point.y * Math.abs(this.scale.y)) }) });
         });
         this._points.forEach(function (point, i)
         {
@@ -756,8 +806,8 @@ class Polygon extends Shape
         });
         this._lines.push(() => { return [this._points[this._points.length - 1], this._points[0]]; });
 
-        this._center.x = (this.#dimensions.maxX - this.#dimensions.minX) / 2 * this.scale.x;
-        this._center.y = (this.#dimensions.maxY - this.#dimensions.minY) / 2 * this.scale.y;
+        this._center.x = (this.#dimensions.maxX - this.#dimensions.minX) / 2 * Math.abs(this.scale.x);
+        this._center.y = (this.#dimensions.maxY - this.#dimensions.minY) / 2 * Math.abs(this.scale.y);
     }
 
     contains(point)
@@ -1137,12 +1187,6 @@ class Sprite extends Shape
         }
     }
 
-    setScale(scaleX, scaleY)
-    {
-        this.scale.x = scaleX;
-        this.scale.y = scaleY;
-    }
-
     showHitbox(value = true)
     {
         this.#showHitbox = value;
@@ -1268,4 +1312,6 @@ class DisplayText
     }
 }
 
-export { Canvas, Events, Util, Line, Polygon, Rectangle, Circle, Sprite, DisplayText, Texture };
+export { Canvas, Events, Util };
+export { Line, Polygon, Rectangle, Circle, Sprite };
+export { DisplayText, Texture };
