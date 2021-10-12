@@ -19,7 +19,6 @@
 // MAYBE Use OffscreenCanvas to offload rendering to worker thread for performance
 
 import './Intersects/umd/intersects.min.js';
-import { isPolygonConvex } from './PolygonDetect.js';
 
 document.body.style = 'margin: 0%; padding: 0%;';
 class Canvas
@@ -688,7 +687,7 @@ class Line
 
         if (shape instanceof Polygon)
         {
-            if (isPolygonConvex(shape._points))
+            if (Util.isPolygonConvex(shape._points))
             {
                 return Intersects.linePolygon(this.x1, this.y1, this.x2, this.y2, Util.objArrayToArray(shape._points), 0.0001);
             }
@@ -828,7 +827,7 @@ class Polygon extends Shape
 
         if (shape instanceof Polygon)
         {
-            if (isPolygonConvex(this._points) && isPolygonConvex(shape._points))
+            if (Util.isPolygonConvex(this._points) && Util.isPolygonConvex(shape._points))
             {
                 return Intersects.polygonPolygon(Util.objArrayToArray(this._points), Util.objArrayToArray(shape._points));
             }
@@ -855,7 +854,7 @@ class Polygon extends Shape
         }
         else if (shape instanceof Circle)
         {
-            if (isPolygonConvex(this._points))
+            if (Util.isPolygonConvex(this._points))
             {
                 return Intersects.polygonCircle(Util.objArrayToArray(this._points), shape.x + shape.radius, shape.y + shape.radius, shape.radius, 0.0001);
             }
@@ -863,7 +862,7 @@ class Polygon extends Shape
         }
         else if (shape instanceof Line)
         {
-            if (isPolygonConvex(this._points))
+            if (Util.isPolygonConvex(this._points))
             {
                 return Intersects.polygonLine(Util.objArrayToArray(this._points), shape.x1, shape.y1, shape.x2, shape.y2, 0.0001);
             }
@@ -1054,7 +1053,7 @@ class Circle extends Shape
 
         if (shape instanceof Polygon)
         {
-            if (isPolygonConvex(shape._points))
+            if (Util.isPolygonConvex(shape._points))
             {
                 return Intersects.circlePolygon(this.x + this.radius, this.y + this.radius, this.radius, Util.objArrayToArray(shape._points));
             }
