@@ -1,4 +1,4 @@
-import { Canvas, Events, Rectangle, Sprite, Util } from '../../Infinite.js';
+import { Canvas, Events, Rectangle, Sprite, Texture, Util } from '../../Infinite.js';
 
 // Create Canvas
 var canvas = new Canvas();
@@ -15,7 +15,6 @@ var center = new Rectangle(10, 10, -5, -5);
 
 // Player Sprite
 var p = await new Sprite('spritesheet.png', rectArea);
-p.showHitbox();
 
 // Animation runs every 140ms
 Util.repeat(() =>

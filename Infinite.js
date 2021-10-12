@@ -1060,17 +1060,31 @@ class Texture
                 return this;
             })();
         }
+        else if (src instanceof Image) this.#texture = src;
+        else if (src instanceof Texture) this.#texture = src.getImage();
     }
     
     loadTexture(src)
     {
-        return new Promise((resolve, reject) =>
+        if (src instanceof String || typeof src == "string")
         {
-            let img = new Image();
-            img.onload = () => resolve(img);
-            img.onerror = reject;
-            img.src = src;
-        })
+            return new Promise((resolve, reject) =>
+            {
+                let img = new Image();
+                img.onload = () => resolve(img);
+                img.onerror = () => reject(new Error("loadTexture couldn't find the source file"));
+                img.src = src;
+            })
+        }
+        else
+        {
+            throw new Error("Invalid source in loadTexture");
+        }
+    }
+
+    setImage(image)
+    {
+        this.#texture = image;
     }
 
     getImage()
@@ -1087,16 +1101,16 @@ class Sprite extends Shape
     #area;
     #showHitbox = false;
 
-    constructor(img, area, scaleX, scaleY)
+    constructor(texture, area, scaleX, scaleY)
     {
         super();
         var args = arguments;
 
-        if (img instanceof String || typeof img == "string")
+        if (texture instanceof String || typeof texture == "string")
         {
             return (async () =>
             {
-                this.#img = (await new Texture(img)).getImage();
+                this.#img = (await new Texture(texture)).getImage();
     
                 if (args.length > 1) 
                 {
@@ -1109,9 +1123,9 @@ class Sprite extends Shape
                 return this;
             })();
         }
-        else if (img instanceof Texture)
+        else if (texture instanceof Texture)
         {
-            this.#img = img.getImage();
+            this.#img = texture.getImage();
             if (arguments.length > 1) 
             {
                 this.#area = area;
