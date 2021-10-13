@@ -20,7 +20,6 @@
 
 import './Intersects/umd/intersects.min.js';
 
-document.body.style = 'margin: 0%; padding: 0%;';
 class Canvas
 {
     #canvas;
@@ -858,7 +857,17 @@ class Polygon extends Shape
             {
                 return Intersects.polygonCircle(Util.objArrayToArray(this._points), shape.x + shape.radius, shape.y + shape.radius, shape.radius, 0.0001);
             }
-            else throw "Concave-Polygon and Circle intersects are not finished";
+            else
+            {
+                if (shape.contains(this._points[0]()) || this.contains(shape.getCenter())) return true;
+                for (let i = 0; i < this._lines.length; i++)
+                {
+                    let p1 = this._lines[i]()[0]();
+                    let p2 = this._lines[i]()[1]();
+                    if (Intersects.lineCircle(p1.x, p1.y, p2.x, p2.y, shape.x + shape.radius, shape.y + shape.radius, shape.radius)) return true;
+                }
+                return false;
+            }
         }
         else if (shape instanceof Line)
         {
@@ -1046,7 +1055,6 @@ class Circle extends Shape
         return { top: this.y, right: this.x + this.radius * 2, bottom: this.y + this.radius * 2, left: this.x }
     }
 
-    // TODO implement circle intersects for concave polygons and re-look at circle intersects in general
     intersects(shape)
     {
         if (shape instanceof Sprite) shape = shape.getHitbox();
@@ -1057,7 +1065,17 @@ class Circle extends Shape
             {
                 return Intersects.circlePolygon(this.x + this.radius, this.y + this.radius, this.radius, Util.objArrayToArray(shape._points));
             }
-            else throw "Circle and Concave-Polygon intersects are not yet finished";
+            else
+            {
+                if (this.contains(shape._points[0]()) || shape.contains(this.getCenter())) return true;
+                for (let i = 0; i < shape._lines.length; i++)
+                {
+                    let p1 = shape._lines[i]()[0]();
+                    let p2 = shape._lines[i]()[1]();
+                    if (Intersects.lineCircle(p1.x, p1.y, p2.x, p2.y, this.x + this.radius, this.y + this.radius, this.radius)) return true;
+                }
+                return false;
+            }
         }
         else if (shape instanceof Circle)
         {
@@ -1105,14 +1123,14 @@ class Texture
             return (async () =>
             {
                 this.#texture = await this.loadTexture(src);
-    
+
                 return this;
             })();
         }
         else if (src instanceof Image) this.#texture = src;
         else if (src instanceof Texture) this.#texture = src.getImage();
     }
-    
+
     loadTexture(src)
     {
         if (src instanceof String || typeof src == "string")
@@ -1160,7 +1178,7 @@ class Sprite extends Shape
             return (async () =>
             {
                 this.#img = (await new Texture(texture)).getImage();
-    
+
                 if (args.length > 1) 
                 {
                     this.#area = area;
