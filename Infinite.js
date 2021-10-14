@@ -50,6 +50,8 @@ class Canvas
         if (arguments.length == 1 && typeof arguments[0] == "string")
         {
             id = arguments[0];
+            width = window.innerWidth;
+            height = window.innerHeight;
         }
         if (arguments.length == 3 && typeof arguments[0] == "string" && typeof arguments[1] == "number" && typeof arguments[2] == "number")
         {
