@@ -2,11 +2,13 @@
 // -------------------------------------------------------------------
 // Current Refactor everything specifically; class constructors should be
 //         given proper error detection for their argument list
+//       - DONE Canvas
+//       - TODO Everything else
 
 // TODO Create way to map touch controls to KBMS so code can be
 //      written once and made cross platform easily 
-// TODO Improve/Finish touch events/controls in Events class - currently
-//      way below standard
+// TODO Improve/Finish touch events/controls in Events class - current
+//      support is very basic
 // TODO Add touch joysticks for touch game support
 // TODO Flesh out Util class with more backend functions
 // TODO Rewrite/add more feature to the DisplayText class
@@ -14,6 +16,12 @@
 //      modified to reduce calls
 // TODO Look through code for ways to improve performance
 // TODO Add multiple canvas support so UI can be separate
+// TODO Redesign Sprite getHitbox and how a sprites hitbox data is stored
+//      because it's currently inefficient and could lead to small bugs
+// TODO There could be problems with shape center points and their shapes
+//      intersects (Circle class). Might seperate the center property into
+//      independent rotation and center points
+// TODO Split Infinite.js into multiple files to improve readability
 
 // MAYBE Add integrated network support using websockets or socket.io
 // MAYBE Use OffscreenCanvas to offload rendering to worker thread for performance
@@ -22,6 +30,9 @@ import './Intersects/umd/intersects.min.js';
 
 class Canvas
 {
+    #id;
+    #num;
+    #infinite;
     #canvas;
     #ctx;
     #camera;
@@ -31,27 +42,87 @@ class Canvas
     #fpsTimer;
     #lastCallTime;
 
-    constructor(width = window.innerWidth, height = window.innerHeight)
+    static #count = 0;
+    static stopAll = false;
+
+    constructor(width = window.innerWidth, height = window.innerHeight, id = "Infinite")
     {
-        this.#canvas = document.getElementById("Infinite");
-        this.#canvas.style = 'margin: 0%; padding: 0%;'
+        if (arguments.length == 1 && typeof arguments[0] == "string")
+        {
+            id = arguments[0];
+        }
+        if (arguments.length == 3 && typeof arguments[0] == "string" && typeof arguments[1] == "number" && typeof arguments[2] == "number")
+        {
+            id = arguments[0];
+            width = arguments[1];
+            height = arguments[2];
+        }
+
+        this.#num = ++Canvas.#count;
+        if (id == "Infinite") this.#id = "Infinite-" + this.#num;
+        else this.#id = id;
+
+        this.#infinite = document.getElementById(id);
+        if (this.#infinite !== null)
+        {
+            // Find/Fix wrapper
+            this.#infinite.id = this.#id;
+            if (this.#infinite.tag != "DIV")
+            {
+                let temp = document.createElement("div");
+                temp.id = this.#infinite.id;
+                temp.innerHTML = this.#infinite.innerHTML;
+                this.#infinite.replaceWith(temp);
+                this.#infinite = temp;
+            }
+
+            // Create/Find canvas
+            this.#canvas = this.#infinite.getElementsByTagName("canvas")[0];
+            if (this.#canvas === null || this.#canvas === undefined)
+            {
+                this.#canvas = document.createElement("canvas");
+                this.#canvas.className = "Infinite-Canvas";
+                this.#canvas.style = "position: relative; top: 0; left: 0; margin: 0%; padding: 0%;";
+                this.#infinite.appendChild(this.#canvas);
+            }
+        }
+        else
+        {
+            this.#infinite = document.createElement("div");
+            this.#infinite.id = this.#id;
+
+            this.#canvas = document.createElement("canvas");
+            this.#canvas.className = "Infinite-Canvas";
+            this.#canvas.style = 'position: relative; top: 0; left: 0; margin: 0%; padding: 0%;'
+            this.#infinite.appendChild(this.#canvas);
+
+            document.body.appendChild(this.#infinite);
+        }
+
+        // Finish Infinite elements
+        this.#infinite.style = "position: absolute; top: 0; left: 0; margin: 0%; padding: 0%;";
         this.#canvas.tabIndex = '1';
         this.#ctx = this.#canvas.getContext("2d", { alpha: false });
 
+        // FPS 
         this.#fpsTimer = document.createElement("div");
-        this.#fpsTimer.style.position = 'absolute';
-        this.#fpsTimer.style.top = '0px';
-        this.#fpsTimer.style.fontSize = '24px';
-        document.body.appendChild(this.#fpsTimer);
+        this.#fpsTimer.className = "Infinite-FPS";
+        this.#fpsTimer.style = "position: absolute; top: 0; left: 0; font-size: 24px;";
+        this.#infinite.appendChild(this.#fpsTimer);
+
+        // Canvas properties
+        this.colour = 'black';
+        this.#canvas.style.backgroundColor = this.colour;
 
         this.setSize(width, height);
 
-        this.colour = 'black';
-        this.#canvas.style.backgroundColor = this.colour;
-        let self = this;
-        this.onResize = function ()
+        if (arguments.length < 2)
         {
-            self.setSize(window.innerWidth, window.innerHeight);
+            let self = this;
+            window.onresize = function (event)
+            {
+                self.setSize(window.innerWidth, window.innerHeight);
+            };
         }
         this.fpsVisible(true);
 
@@ -87,6 +158,7 @@ class Canvas
 
     run()
     {
+        Canvas.stopAll = false;
         this.running = true;
         this.#start();
         this.#lastCallTime = performance.now();
@@ -96,7 +168,7 @@ class Canvas
 
     #loop()
     {
-        if (this.running)
+        if (this.running && !Canvas.stopAll)
         {
             this.#update();
             window.requestAnimationFrame(() => this.#loop());
@@ -607,7 +679,7 @@ class Shape
         this._direction = 0;
         this.colour = "black";
 
-        this.scale = { x: 1.0, y: 1.0 };
+        this._scale = { x: 1.0, y: 1.0 };
 
         this._center = { x: 0, y: 0 };
     }
@@ -647,13 +719,13 @@ class Shape
 
     getScale()
     {
-        return this.scale;
+        return this._scale;
     }
 
     setScale(scaleX, scaleY)
     {
-        this.scale.x = scaleX;
-        this.scale.y = scaleY;
+        this._scale.x = scaleX;
+        this._scale.y = scaleY;
     }
 
     getCenter()
@@ -765,12 +837,12 @@ class Polygon extends Shape
             else if (y < this.#dimensions.minY) this.#dimensions.minY = y;
         }
 
-        this._center.x = (this.#dimensions.maxX - this.#dimensions.minX) / 2 * Math.abs(this.scale.x);
-        this._center.y = (this.#dimensions.maxY - this.#dimensions.minY) / 2 * Math.abs(this.scale.y);
+        this._center.x = (this.#dimensions.maxX - this.#dimensions.minX) / 2 * Math.abs(this._scale.x);
+        this._center.y = (this.#dimensions.maxY - this.#dimensions.minY) / 2 * Math.abs(this._scale.y);
 
         if (arguments.length == 2)
         {
-            this._points.push(() => { return this.rotatePoint({ x: this.x + (x * Math.abs(this.scale.x)), y: this.y + (y * Math.abs(this.scale.y)) }) });
+            this._points.push(() => { return this.rotatePoint({ x: this.x + (x * Math.abs(this._scale.x)), y: this.y + (y * Math.abs(this._scale.y)) }) });
             return true;
         }
         return false;
@@ -793,7 +865,7 @@ class Polygon extends Shape
             if (point.y > this.#dimensions.maxY) this.#dimensions.maxY = point.y;
             else if (point.y < this.#dimensions.minY) this.#dimensions.minY = point.y;
 
-            this._points.push(() => { return this.rotatePoint({ x: this.x + (point.x * Math.abs(this.scale.x)), y: this.y + (point.y * Math.abs(this.scale.y)) }) });
+            this._points.push(() => { return this.rotatePoint({ x: this.x + (point.x * Math.abs(this._scale.x)), y: this.y + (point.y * Math.abs(this._scale.y)) }) });
         });
         this._points.forEach(function (point, i)
         {
@@ -804,8 +876,8 @@ class Polygon extends Shape
         });
         this._lines.push(() => { return [this._points[this._points.length - 1], this._points[0]]; });
 
-        this._center.x = (this.#dimensions.maxX - this.#dimensions.minX) / 2 * Math.abs(this.scale.x);
-        this._center.y = (this.#dimensions.maxY - this.#dimensions.minY) / 2 * Math.abs(this.scale.y);
+        this._center.x = (this.#dimensions.maxX - this.#dimensions.minX) / 2 * Math.abs(this._scale.x);
+        this._center.y = (this.#dimensions.maxY - this.#dimensions.minY) / 2 * Math.abs(this._scale.y);
     }
 
     contains(point)
@@ -912,8 +984,8 @@ class Polygon extends Shape
         else return pt;
     }
 
-    getWidth() { return (this.#dimensions.maxX - this.#dimensions.minX) * this.scale.x; }
-    getHeight() { return (this.#dimensions.maxY - this.#dimensions.minY) * this.scale.y; }
+    getWidth() { return (this.#dimensions.maxX - this.#dimensions.minX) * this._scale.x; }
+    getHeight() { return (this.#dimensions.maxY - this.#dimensions.minY) * this._scale.y; }
 
     draw(ctx)
     {
@@ -1216,7 +1288,7 @@ class Sprite extends Shape
             let clone = new Polygon(this.#area.json, this.x, this.y);
             clone._direction = this._direction;
             clone._center = this._center;
-            clone.scale = this.scale;
+            clone._scale = this._scale;
             return clone;
         }
         else if (this.#area instanceof Circle)
@@ -1224,7 +1296,7 @@ class Sprite extends Shape
             let clone = new Circle(this.#area.radius, this.x, this.y);
             clone._direction = this._direction;
             clone._center = this.#area._center;
-            clone.scale = this.scale;
+            clone._scale = this._scale;
             return clone;
         }
     }
@@ -1251,8 +1323,8 @@ class Sprite extends Shape
 
     flip(horizontal = false, vertical = false)
     {
-        if (horizontal) this.scale.x = -this.scale.x;
-        if (vertical) this.scale.y = -this.scale.y;
+        if (horizontal) this._scale.x = -this._scale.x;
+        if (vertical) this._scale.y = -this._scale.y;
     }
 
     draw(context)
@@ -1273,10 +1345,10 @@ class Sprite extends Shape
         context.translate(-o.x, -o.y);
 
 
-        if (this.scale.x == -1) context.translate(this.#area.getWidth(), 0);
-        if (this.scale.y == -1) context.translate(0, this.#area.getHeight());
-        context.translate(-(this.x * (this.scale.x - 1)), -(this.y * (this.scale.y - 1)));
-        context.scale(this.scale.x, this.scale.y);
+        if (this._scale.x == -1) context.translate(this.#area.getWidth(), 0);
+        if (this._scale.y == -1) context.translate(0, this.#area.getHeight());
+        context.translate(-(this.x * (this._scale.x - 1)), -(this.y * (this._scale.y - 1)));
+        context.scale(this._scale.x, this._scale.y);
 
         if (this.#showHitbox) 
         {
@@ -1329,6 +1401,6 @@ class DisplayText
     }
 }
 
-export { Canvas, Events, Util };
+export { Canvas, Events, Camera, Util };
 export { Line, Polygon, Rectangle, Circle, Sprite };
 export { DisplayText, Texture };
