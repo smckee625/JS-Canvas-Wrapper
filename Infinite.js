@@ -901,7 +901,10 @@ class Polygon extends Shape
 
     intersects(shape)
     {
-        if (shape instanceof Sprite) shape = shape.getHitbox();
+        if (shape instanceof Sprite) 
+        {
+            shape = shape.getHitbox();
+        }
 
         if (shape instanceof Polygon)
         {
@@ -1164,7 +1167,8 @@ class Circle extends Shape
 
 class Texture
 {
-    #texture = new Image();
+    #img = new Image();
+    #area;
 
     constructor(src)
     {
@@ -1172,13 +1176,13 @@ class Texture
         {
             return (async () =>
             {
-                this.#texture = await this.loadTexture(src);
+                this.#img = await this.loadTexture(src);
 
                 return this;
             })();
         }
-        else if (src instanceof Image) this.#texture = src;
-        else if (src instanceof Texture) this.#texture = src.getImage();
+        else if (src instanceof Image) this.#img = src;
+        else if (src instanceof Texture) this.#img = src.getImage();
     }
 
     loadTexture(src)
@@ -1201,12 +1205,51 @@ class Texture
 
     setImage(image)
     {
-        this.#texture = image;
+        this.#img = image;
     }
 
     getImage()
     {
-        return this.#texture;
+        return this.#img;
+    }
+
+    setArea(shape)
+    {
+        this.#area = shape;
+    }
+
+    getArea(shape)
+    {
+        if (arguments.length == 0)
+        {
+            let canvas = document.createElement("canvas");
+            let context = canvas.getContext("2d");
+
+            canvas.width = this.#area.getWidth();
+            canvas.height = this.#area.getHeight();
+    
+            context.translate(-this.#area.x,-this.#area.y);
+            this.#area.draw(context);
+            context.clip();
+            context.drawImage(this.#img, 0,0);
+    
+            return canvas;
+        }
+        else
+        {
+            let canvas = document.createElement("canvas");
+            let context = canvas.getContext("2d");
+
+            canvas.width = this.#area.getWidth();
+            canvas.height = this.#area.getHeight();
+    
+            context.translate(-shape.x,-shape.y);
+            shape.draw(context);
+            context.clip();
+            context.drawImage(this.#img, 0, 0);
+    
+            return canvas;
+        }
     }
 }
 
@@ -1214,11 +1257,11 @@ class Texture
 
 class Sprite extends Shape
 {
-    #img = new Image();
+    #texture = new Texture();
     #area;
     #showHitbox = false;
 
-    constructor(texture, area, scaleX, scaleY)
+    constructor(texture, area)
     {
         super();
         var args = arguments;
@@ -1227,7 +1270,7 @@ class Sprite extends Shape
         {
             return (async () =>
             {
-                this.#img = (await new Texture(texture)).getImage();
+                this.#texture = await new Texture(texture);
 
                 if (args.length > 1) 
                 {
@@ -1235,22 +1278,24 @@ class Sprite extends Shape
                 }
                 else
                 {
-                    this.#area = new Rectangle(this.#img.width, this.#img.height);
+                    this.#area = new Rectangle(this.#texture.getImage().width, this.#texture.getImage().height);
                 }
+                this.#texture.setArea(this.#area);
                 return this;
             })();
         }
         else if (texture instanceof Texture)
         {
-            this.#img = texture.getImage();
+            this.#texture = texture;
             if (arguments.length > 1) 
             {
                 this.#area = area;
             }
             else
             {
-                this.#area = new Rectangle(this.#img.width, this.#img.height);
+                this.#area = new Rectangle(this.#texture.getImage().width, this.#texture.getImage().height);
             }
+            this.#texture.setArea(this.#area);
         }
     }
 
@@ -1308,21 +1353,17 @@ class Sprite extends Shape
     draw(context)
     {
         context.save();
-        let areaX = this.#area.x;
-        let areaY = this.#area.y;
-
-        this.#area.x = this.x;
-        this.#area.y = this.y;
 
         context.beginPath();
 
+        // Sprite Rotation
         this.setCenter(this.#area._center.x, this.#area._center.y);
         let o = this.getCenter();
         context.translate(o.x, o.y);
         context.rotate(this._direction * Math.PI / 180);
         context.translate(-o.x, -o.y);
 
-
+        // Sprite Rotation
         if (this._scale.x == -1) context.translate(this.#area.getWidth() * this.#area._scale.x, 0);
         if (this._scale.y == -1) context.translate(0, this.#area.getHeight() * this.#area._scale.y);
         context.translate(-(this.x * (this._scale.x - 1)), -(this.y * (this._scale.y - 1)));
@@ -1330,21 +1371,15 @@ class Sprite extends Shape
 
         if (this.#showHitbox) 
         {
-            this.#area.draw(context);
+            context.drawImage(this.#texture.getArea(), this.x, this.y);
         }
         else 
         {
             let temp = this.#area.colour;
             this.#area.colour = 'rgba(0, 0, 0, 0.0)';
-            this.#area.draw(context, "mask");
+            context.drawImage(this.#texture.getArea(), this.x, this.y);
             this.#area.colour = temp;
         }
-
-        context.clip();
-        context.drawImage(this.#img, (this.x - areaX), (this.y - areaY));
-
-        this.#area.x = areaX;
-        this.#area.y = areaY;
 
         context.restore();
     }
