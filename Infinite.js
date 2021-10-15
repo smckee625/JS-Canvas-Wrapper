@@ -2,7 +2,7 @@
 // -------------------------------------------------------------------
 // Current Refactor everything specifically; class constructors should be
 //         given proper error detection for their argument list
-//       - DONE Canvas
+//       - DONE Canvas constructor
 //       - TODO Everything else
 
 // TODO Create way to map touch controls to KBMS so code can be
@@ -69,7 +69,7 @@ class Canvas
         {
             // Find/Fix wrapper
             this.#infinite.id = this.#id;
-            if (this.#infinite.tag != "DIV")
+            if (this.#infinite.tagName != "DIV")
             {
                 let temp = document.createElement("div");
                 temp.id = this.#infinite.id;
@@ -220,9 +220,8 @@ class Canvas
 
     setPosition(x, y)
     {
-        this.#canvas.style.position = 'absolute';
-        this.#canvas.style.top = y;
-        this.#canvas.style.left = x;
+        this.#infinite.style.top = y;
+        this.#infinite.style.left = x;
     }
 
     setFullscreen(val)
@@ -441,7 +440,6 @@ class Events
                     y: y
                 };
             }
-            // throw 'Touch events are not yet finished';
         }
         if (options['debug'])
         {
@@ -503,11 +501,11 @@ class Camera
     #rotation;
     #shape = null;
 
-    constructor(width = window.innerWidth, height = window.innerHeight, x = 0, y = 0, rotation = 0)
+    constructor(width = window.innerWidth, height = window.innerHeight)
     {
-        this.setPosition(x, y);
         this.setSize(width, height);
-        this.setRotation(rotation);
+        this.setPosition(0, 0);
+        this.setRotation(0);
     }
 
     setPosition(x, y)
@@ -524,8 +522,8 @@ class Camera
     getPosition()
     {
         if (this.#shape != null) return {
-            x: this.#shape.x - this.#width / 2 + this.#shape.getWidth() / 2,
-            y: this.#shape.y - this.#height / 2 + this.#shape.getHeight() / 2
+            x: this.#shape.x - this.#width / 2 + this.#shape.getWidth() * this.#shape._scale.x / 2,
+            y: this.#shape.y - this.#height / 2 + this.#shape.getHeight() * this.#shape._scale.y / 2
         };
         return { x: this.#x, y: this.#y };
     }
@@ -781,7 +779,7 @@ class Line
         }
         else if (shape instanceof Circle)
         {
-            return Intersects.lineCircle(this.x1, this.y1, this.x2, this.xy2, shape.x + shape.radius, shape.y + shape.radius, shape.radius);
+            return Intersects.lineCircle(this.x1, this.y1, this.x2, this.y2, shape.x + shape.radius, shape.y + shape.radius, shape.radius);
         }
         else if (shape instanceof Line)
         {
@@ -806,20 +804,16 @@ class Line
 class Polygon extends Shape
 {
     #dimensions = { minX: null, maxX: null, minY: null, maxY: null };
-    constructor(json, x, y)
+    constructor(json = [], x = 0, y = 0)
     {
         super();
-        this.json = json;
 
         this._points = [];
         this._lines = [];
 
-        if (arguments.length == 3)
-        {
-            this.x = x;
-            this.y = y;
-        }
-        if (arguments.length > 0) this.setPoints(json);
+        this.x = x;
+        this.y = y;
+        this.setPoints(json);
     }
 
     addPoint(x, y)
@@ -844,7 +838,7 @@ class Polygon extends Shape
 
         if (arguments.length == 2)
         {
-            this._points.push(() => { return this.rotatePoint({ x: this.x + (x * Math.abs(this._scale.x)), y: this.y + (y * Math.abs(this._scale.y)) }) });
+            this._points.push(() => { return this.#rotatePoint({ x: this.x + (x * Math.abs(this._scale.x)), y: this.y + (y * Math.abs(this._scale.y)) }) });
             return true;
         }
         return false;
@@ -852,45 +846,56 @@ class Polygon extends Shape
 
     setPoints(json)
     {
-        this._points = [];
-        let self = this;
-
-        this.#dimensions.minX = json[0].x;
-        this.#dimensions.maxX = json[0].x;
-        this.#dimensions.minY = json[0].y;
-        this.#dimensions.maxY = json[0].y;
-
-        json.forEach(point =>
+        if (Array.isArray(json) && json.length > 2)
         {
-            if (point.x > this.#dimensions.maxX) this.#dimensions.maxX = point.x;
-            else if (point.x < this.#dimensions.minX) this.#dimensions.minX = point.x;
-            if (point.y > this.#dimensions.maxY) this.#dimensions.maxY = point.y;
-            else if (point.y < this.#dimensions.minY) this.#dimensions.minY = point.y;
+            this.json = json;
+            this._points = [];
+            this._lines = [];
 
-            this._points.push(() => { return this.rotatePoint({ x: this.x + (point.x * Math.abs(this._scale.x)), y: this.y + (point.y * Math.abs(this._scale.y)) }) });
-        });
-        this._points.forEach(function (point, i)
-        {
-            if (i < self._points.length - 1)
+            let self = this;
+
+            this.#dimensions.minX = json[0].x;
+            this.#dimensions.maxX = json[0].x;
+            this.#dimensions.minY = json[0].y;
+            this.#dimensions.maxY = json[0].y;
+
+            json.forEach(point =>
             {
-                self._lines.push(() => { return [point, self._points[i + 1]]; });
-            }
-        });
-        this._lines.push(() => { return [this._points[this._points.length - 1], this._points[0]]; });
+                if (point.x > this.#dimensions.maxX) this.#dimensions.maxX = point.x;
+                else if (point.x < this.#dimensions.minX) this.#dimensions.minX = point.x;
+                if (point.y > this.#dimensions.maxY) this.#dimensions.maxY = point.y;
+                else if (point.y < this.#dimensions.minY) this.#dimensions.minY = point.y;
 
-        this._center.x = (this.#dimensions.maxX - this.#dimensions.minX) / 2 * Math.abs(this._scale.x);
-        this._center.y = (this.#dimensions.maxY - this.#dimensions.minY) / 2 * Math.abs(this._scale.y);
+                this._points.push(() => { return this.#rotatePoint({ x: this.x + (point.x * Math.abs(this._scale.x)), y: this.y + (point.y * Math.abs(this._scale.y)) }) });
+            });
+
+            if (this._points.length < 3)
+            {
+                this._points.forEach(function (point, i)
+                {
+                    if (i < self._points.length - 1)
+                    {
+                        self._lines.push(() => { return [point, self._points[i + 1]]; });
+                    }
+                });
+                this._lines.push(() => { return [this._points[this._points.length - 1], this._points[0]]; });
+
+                this._center.x = (this.#dimensions.maxX - this.#dimensions.minX) / 2 * Math.abs(this._scale.x);
+                this._center.y = (this.#dimensions.maxY - this.#dimensions.minY) / 2 * Math.abs(this._scale.y);
+            }
+            return true;
+        }
+        return false;
     }
 
     contains(point)
     {
-        let context = document.getElementById('Infinite').getContext("2d");
-        context.save();
+        let canvas = document.createElement("canvas");
+        let context = canvas.getContext("2d");
 
         this.draw(context);
         let val = context.isPointInPath(point.x, point.y);
 
-        context.restore();
         return val;
     }
 
@@ -967,9 +972,9 @@ class Polygon extends Shape
         return null;
     }
 
-    rotatePoint(pt)
+    #rotatePoint(pt)
     {
-        if (this._direction != 0)
+        if (this.getDirection() != 0)
         {
             let angle = this._direction * (Math.PI / 180); // Convert to radians
 
@@ -978,7 +983,6 @@ class Polygon extends Shape
             let tempY = pt.y - o.y;
 
             let rotatedX = Math.cos(angle) * tempX - Math.sin(angle) * tempY + o.x;
-
             let rotatedY = Math.sin(angle) * tempX + Math.cos(angle) * tempY + o.y;
 
             return { x: rotatedX, y: rotatedY };
@@ -986,8 +990,8 @@ class Polygon extends Shape
         else return pt;
     }
 
-    getWidth() { return (this.#dimensions.maxX - this.#dimensions.minX) * this._scale.x; }
-    getHeight() { return (this.#dimensions.maxY - this.#dimensions.minY) * this._scale.y; }
+    getWidth() { return (this.#dimensions.maxX - this.#dimensions.minX); }
+    getHeight() { return (this.#dimensions.maxY - this.#dimensions.minY); }
 
     draw(ctx)
     {
@@ -1055,53 +1059,25 @@ class Rectangle extends Polygon
 
     setWidth(width)
     {
-        this.#width = width;
-        this.setPoints([{ x: 0, y: 0 }, { x: this.#width, y: 0 }, { x: this.#width, y: this.#height }, { x: 0, y: this.#height }]);
+        this.setSize(width, this.#height);
     }
 
     setHeight(height)
     {
-        this.#height = height;
-        this.setPoints([{ x: 0, y: 0 }, { x: this.#width, y: 0 }, { x: this.#width, y: this.#height }, { x: 0, y: this.#height }]);
+        this.setSize(this.#width, height);
     }
+    
+    // getWidth() { return this.#width * this._scale.x; }
+    // getHeight() { return this.#height * this._scale.y; }
 
-    contains(point)
-    {
-        let context = document.getElementById('Infinite').getContext("2d");
-        let cx = this.x + 0.5 * this.#width;
-        let cy = this.y + 0.5 * this.#height;
-
-        context.save();
-
-        context.translate(cx, cy);
-        context.rotate(this._direction * (Math.PI / 180));
-        context.translate(-cx, -cy);
-
-        context.beginPath();
-        context.rect(this.x, this.y, this.#width, this.#height);
-        let val = context.isPointInPath(point.x, point.y);
-
-        context.restore();
-        return val;
-    }
+    // setScale(scaleX, scaleY)
+    // {
+    //     super.setScale(scaleX, scaleY);
+        
+    // }
 
     draw(context)
     {
-        // let cx = this.x + 0.5 * this.#width;
-        // let cy = this.y + 0.5 * this.#height;
-
-        // context.save();
-
-        // context.translate(cx, cy);
-        // context.rotate(this._direction * (Math.PI / 180));
-        // context.translate(-cx, -cy);
-
-        // context.beginPath();
-        // context.fillStyle = this.colour;
-        // if (arguments.length == 2 && arguments[1] == "mask") context.rect(this.x, this.y, this.#width, this.#height);
-        // else context.fillRect(this.x, this.y, this.#width, this.#height);
-
-        // context.restore();
         if (arguments.length == 2 && arguments[1] == "mask") super.draw(context, arguments[1]);
         else super.draw(context);
     }
@@ -1347,8 +1323,8 @@ class Sprite extends Shape
         context.translate(-o.x, -o.y);
 
 
-        if (this._scale.x == -1) context.translate(this.#area.getWidth(), 0);
-        if (this._scale.y == -1) context.translate(0, this.#area.getHeight());
+        if (this._scale.x == -1) context.translate(this.#area.getWidth() * this.#area._scale.x, 0);
+        if (this._scale.y == -1) context.translate(0, this.#area.getHeight() * this.#area._scale.y);
         context.translate(-(this.x * (this._scale.x - 1)), -(this.y * (this._scale.y - 1)));
         context.scale(this._scale.x, this._scale.y);
 

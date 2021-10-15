@@ -7,11 +7,11 @@ canvas.fpsVisible(false);
 
 //Players
 var p1 = new Rectangle(20, 100);
-p1.setPosition(0, canvas.height / 2);
+p1.setPosition(10, canvas.height / 2);
 p1.colour = 'blue';
 
 var p2 = new Rectangle(20, 100);
-p2.setPosition(canvas.width - p2.getSize().width, canvas.height / 2);
+p2.setPosition(canvas.width - p2.getSize().width - 10, canvas.height / 2);
 p2.colour = 'green';
 
 // Ball
@@ -75,10 +75,12 @@ canvas.onUpdate(async () =>
 
     // Clear everything on screen then draw
     canvas.clear();
-    
+
+    canvas.draw(ball);
+
     canvas.draw(p1);
     canvas.draw(p2);
-    canvas.draw(ball);
+
     canvas.draw(s1);
     canvas.draw(s2);
 });
