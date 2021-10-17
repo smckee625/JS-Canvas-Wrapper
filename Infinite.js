@@ -28,6 +28,15 @@
 
 import './Intersects/umd/intersects.min.js';
 
+var styles  = document.createElement("style");
+styles.id = "Infinite-Styles" ;
+styles.innerHTML = "[class^='Infinite-'] { position: absolute; top: 0; left: 0; margin: 0%; padding: 0%; }\n" +
+                   ".Infinite-Canvas { background-color: 'black'; }\n" +
+                   ".Infinite-UI { width: 100%; height: 100%; }\n" +
+                   ".Infinite-FPS { font-size: 24px; }";
+document.getElementsByTagName("HEAD")[0].appendChild(styles);
+
+
 class Canvas
 {
     #id;
@@ -36,6 +45,7 @@ class Canvas
     #canvas;
     #ctx;
     #camera;
+    #ui;
 
     #fps;
     #fpsInterval;
@@ -84,9 +94,15 @@ class Canvas
             {
                 this.#canvas = document.createElement("canvas");
                 this.#canvas.className = "Infinite-Canvas";
-                this.#canvas.style = "position: relative; top: 0; left: 0; margin: 0%; padding: 0%;";
-                this.#infinite.appendChild(this.#canvas);
+                this.#infinite.prepend(this.#canvas);
             }
+            else if (!this.#canvas.classList.contains("Infinite-Canvas"))
+            {
+                this.#canvas.className = "Infinite-Canvas " + this.#canvas.className; 
+            }
+
+            // Create/Find canvas
+            this.#ui = this.#infinite.getElementsByClassName("Infinite-UI")[0];
         }
         else
         {
@@ -95,26 +111,22 @@ class Canvas
 
             this.#canvas = document.createElement("canvas");
             this.#canvas.className = "Infinite-Canvas";
-            this.#canvas.style = 'position: relative; top: 0; left: 0; margin: 0%; padding: 0%;'
             this.#infinite.appendChild(this.#canvas);
 
             document.body.appendChild(this.#infinite);
         }
 
         // Finish Infinite elements
-        this.#infinite.style = "position: absolute; top: 0; left: 0; margin: 0%; padding: 0%;";
         this.#canvas.tabIndex = '1';
         this.#ctx = this.#canvas.getContext("2d", { alpha: false });
 
         // FPS 
         this.#fpsTimer = document.createElement("div");
         this.#fpsTimer.className = "Infinite-FPS";
-        this.#fpsTimer.style = "position: absolute; top: 0; left: 0; font-size: 24px;";
         this.#infinite.appendChild(this.#fpsTimer);
 
         // Canvas properties
         this.colour = 'black';
-        this.#canvas.style.backgroundColor = this.colour;
 
         this.setSize(width, height);
 
@@ -127,6 +139,7 @@ class Canvas
             };
         }
         this.fpsVisible(true);
+        this.hide();
 
         this.#camera = new Camera(this.width, this.height);
     }
@@ -162,6 +175,7 @@ class Canvas
     {
         Canvas.stopAll = false;
         this.running = true;
+        this.show();
         this.#start();
         this.#lastCallTime = performance.now();
         this.#fps = 0;
@@ -247,7 +261,7 @@ class Canvas
             this.#fpsInterval = setInterval(() =>
             {
                 self.#fpsTimer.textContent = Math.round(self.#fps);
-            }, 100);
+            }, 200);
         }
         else
         {
@@ -255,6 +269,23 @@ class Canvas
 
             clearInterval(this.#fpsInterval);
         }
+    }
+
+    hide()
+    {
+        this.#canvas.style.display = "none";
+        this.#fpsTimer.style.display = "none";
+    }
+
+    show()
+    {
+        this.#canvas.style.display = "block"; 
+        this.#fpsTimer.style.display = "block";
+    }
+
+    getUI()
+    {
+        return this.#ui;
     }
 }
 
