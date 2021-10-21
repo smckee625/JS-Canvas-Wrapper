@@ -3,6 +3,7 @@ import { Canvas, Events, Rectangle, Sprite, Texture, Util } from '../../Infinite
 // Create Canvas
 var canvas = new Canvas();
 canvas.colour = 'lightblue';
+canvas.setFullscreen(false);
 
 // Create Event system
 var events = new Events(canvas, { keyboard: true, mouse: false, touch: false, debug: false });
@@ -15,6 +16,9 @@ var center = new Rectangle(10, 10, -5, -5);
 
 // Player Sprite
 var p = await new Sprite('spritesheet.png', rectArea);
+
+// Center camera on player
+canvas.getCamera().track(p);
 
 // Animation runs every 140ms
 Util.repeat(() =>
@@ -47,9 +51,6 @@ canvas.onUpdate(async () =>
     if (events.isKeyDown("s")) p.y++;
     if (events.isKeyDown("d")) p.x++;
     if (events.wasKeyPressed("r")) p.turn(30);
-
-    // Center camera on player
-    canvas.getCamera().setPosition(p.x - canvas.width / 2 + 60, p.y - canvas.height / 2 + 60);
 
     // Detect intersect
     if (center.intersects(p)) center.colour = 'red';

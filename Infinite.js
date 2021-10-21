@@ -28,12 +28,12 @@
 
 import './Intersects/umd/intersects.min.js';
 
-var styles  = document.createElement("style");
-styles.id = "Infinite-Styles" ;
+var styles = document.createElement("style");
+styles.id = "Infinite-Styles";
 styles.innerHTML = "[class^='Infinite-'] { position: absolute; top: 0; left: 0; margin: 0%; padding: 0%; }\n" +
-                   ".Infinite-Canvas { background-color: 'black'; }\n" +
-                   ".Infinite-UI { width: 100%; height: 100%; }\n" +
-                   ".Infinite-FPS { font-size: 24px; }";
+    ".Infinite-Canvas { background-color: 'black'; }\n" +
+    ".Infinite-UI { width: 100%; height: 100%; }\n" +
+    ".Infinite-FPS { font-size: 24px; }";
 document.getElementsByTagName("HEAD")[0].appendChild(styles);
 
 
@@ -57,13 +57,20 @@ class Canvas
 
     constructor(width = window.innerWidth, height = window.innerHeight, id = "Infinite")
     {
-        if (arguments.length == 1 && typeof arguments[0] == "string")
+        if (arguments.length == 1)
         {
-            id = arguments[0];
-            width = window.innerWidth;
-            height = window.innerHeight;
+            if (typeof arguments[0] == "string")
+            {
+                id = arguments[0];
+                width = window.innerWidth;
+                height = window.innerHeight;
+            }
+            else if (typeof arguments[0] == "number")
+            {
+                height = width * window.innerHeight / window.innerWidth;
+            }
         }
-        if (arguments.length == 3 && typeof arguments[0] == "string" && typeof arguments[1] == "number" && typeof arguments[2] == "number")
+        else if (arguments.length == 3 && typeof arguments[0] == "string" && typeof arguments[1] == "number" && typeof arguments[2] == "number")
         {
             id = arguments[0];
             width = arguments[1];
@@ -98,7 +105,7 @@ class Canvas
             }
             else if (!this.#canvas.classList.contains("Infinite-Canvas"))
             {
-                this.#canvas.className = "Infinite-Canvas " + this.#canvas.className; 
+                this.#canvas.className = "Infinite-Canvas " + this.#canvas.className;
             }
 
             // Create/Find canvas
@@ -130,14 +137,6 @@ class Canvas
 
         this.setSize(width, height);
 
-        if (arguments.length < 2)
-        {
-            let self = this;
-            window.onresize = function (event)
-            {
-                self.setSize(window.innerWidth, window.innerHeight);
-            };
-        }
         this.fpsVisible(true);
         this.hide();
 
@@ -150,19 +149,17 @@ class Canvas
 
         this.#ctx.beginPath();
         this.#ctx.clearRect(0, 0, this.width, this.height);
-        if (this.#ctx.fillStyle != this.colour)
-        {
-            this.#ctx.rect(0, 0, this.width, this.height);
-            this.#ctx.fillStyle = this.colour;
-            this.#ctx.fill();
-        }
+
+        this.#ctx.beginPath();
+        this.#ctx.rect(0, 0, this.width, this.height);
+        this.#ctx.fillStyle = this.colour;
+        this.#ctx.fill();
 
         let cPos = this.#camera.getPosition();
         let cRot = this.#camera.getRotation();
         let cSize = this.#camera.getSize();
 
-        this.#ctx.translate(-cPos.x, -cPos.y);
-        this.#ctx.scale(this.width / cSize.width, this.height / cSize.height);
+        this.#ctx.setTransform(this.width / cSize.width, 0, 0, this.height / cSize.height, -cPos.x, -cPos.y);
         this.#ctx.rotate(cRot * Math.PI / 180);
     }
 
@@ -238,17 +235,22 @@ class Canvas
         this.#infinite.style.left = x;
     }
 
-    setFullscreen(val)
+    setFullscreen(stretch = false)
     {
-        if (val)
+        if (stretch == false) window.addEventListener('resize', () => 
         {
             this.setSize(window.innerWidth, window.innerHeight);
-            window.addEventListener('resize', this.onResize, false);
-        }
-        else
+
+            this.#canvas.style.width = window.innerWidth;
+            this.#canvas.style.height = window.innerHeight;
+            this.getCamera().setSize(window.innerWidth, window.innerHeight);
+        }, false);
+        else window.addEventListener('resize', () => 
         {
-            window.removeEventListener('resize', this.onResize, false);
-        }
+            this.#canvas.style.width = window.innerWidth;
+            this.#canvas.style.height = window.innerHeight;
+            this.getCamera().setSize(this.width, this.height);
+        }, false);
     }
 
     fpsVisible(val)
@@ -279,7 +281,7 @@ class Canvas
 
     show()
     {
-        this.#canvas.style.display = "block"; 
+        this.#canvas.style.display = "block";
         this.#fpsTimer.style.display = "block";
     }
 
@@ -553,8 +555,8 @@ class Camera
     getPosition()
     {
         if (this.#shape != null) return {
-            x: this.#shape.x - this.#width / 2 + this.#shape.getWidth() * this.#shape._scale.x / 2,
-            y: this.#shape.y - this.#height / 2 + this.#shape.getHeight() * this.#shape._scale.y / 2
+            x: this.#shape.x + this.#shape.getWidth() / 2 - this.#width / 2,
+            y: this.#shape.y + this.#shape.getHeight() / 2 - this.#height / 2
         };
         return { x: this.#x, y: this.#y };
     }
@@ -741,7 +743,7 @@ class Shape
         this._direction = (this._direction + degrees) % 360;
     }
 
-    move(distance, angle=0)
+    move(distance, angle = 0)
     {
         let rads = ((this.getDirection() + angle) % 360) * (Math.PI / 180);
         this.x += Math.round(distance * Math.sin(rads));
@@ -1117,14 +1119,14 @@ class Rectangle extends Polygon
     {
         this.setSize(this.#width, height);
     }
-    
+
     // getWidth() { return this.#width * this._scale.x; }
     // getHeight() { return this.#height * this._scale.y; }
 
     // setScale(scaleX, scaleY)
     // {
     //     super.setScale(scaleX, scaleY);
-        
+
     // }
 
     draw(context)
@@ -1275,12 +1277,12 @@ class Texture
 
             canvas.width = this.#area.getWidth();
             canvas.height = this.#area.getHeight();
-    
-            context.translate(-this.#area.x,-this.#area.y);
+
+            context.translate(-this.#area.x, -this.#area.y);
             this.#area.draw(context);
             context.clip();
-            context.drawImage(this.#img, 0,0);
-    
+            context.drawImage(this.#img, 0, 0);
+
             return canvas;
         }
         else
@@ -1290,12 +1292,12 @@ class Texture
 
             canvas.width = this.#area.getWidth();
             canvas.height = this.#area.getHeight();
-    
-            context.translate(-shape.x,-shape.y);
+
+            context.translate(-shape.x, -shape.y);
             shape.draw(context);
             context.clip();
             context.drawImage(this.#img, 0, 0);
-    
+
             return canvas;
         }
     }
