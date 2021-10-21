@@ -741,9 +741,9 @@ class Shape
         this._direction = (this._direction + degrees) % 360;
     }
 
-    move(distance)
+    move(distance, angle=0)
     {
-        let rads = this._direction * (Math.PI / 180);
+        let rads = ((this.getDirection() + angle) % 360) * (Math.PI / 180);
         this.x += Math.round(distance * Math.sin(rads));
         this.y -= Math.round(distance * Math.cos(rads));
     }
@@ -817,6 +817,23 @@ class Line
             return Intersects.lineLine(this.x1, this.y1, this.x2, this.y2, shape.x1, shape.y1, shape.x2, shape.y2, 1, 1)
         }
         return null;
+    }
+
+    getAngle()
+    {
+        return (Math.atan2(this.y2 - this.y1, this.x2 - this.x1) * 180 / Math.PI + 90) % 360;
+    }
+
+    getLength()
+    {
+        return Math.hypot(this.x2 - this.x1, this.y2 - this.y1);
+    }
+
+    getComponets()
+    {
+        let length = this.getLength();
+        let angle = this.getAngle() * Math.PI / 180;
+        return { vertical: length * -Math.cos(angle), horizontal: length * Math.sin(angle) };
     }
 
     draw(ctx)
