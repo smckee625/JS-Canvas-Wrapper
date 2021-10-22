@@ -31,11 +31,10 @@ import './Intersects/umd/intersects.min.js';
 var styles = document.createElement("style");
 styles.id = "Infinite-Styles";
 styles.innerHTML = "[class^='Infinite-'] { position: absolute; top: 0; left: 0; margin: 0%; padding: 0%; }\n" +
-    ".Infinite-Canvas { background-color: 'black'; }\n" +
-    ".Infinite-UI { width: 100%; height: 100%; }\n" +
-    ".Infinite-FPS { font-size: 24px; }";
+                   ".Infinite-Canvas { background-color: 'black'; }\n" +
+                   ".Infinite-UI { width: 100%; height: 100%; }\n" +
+                   ".Infinite-FPS { font-size: 24px; }";
 document.getElementsByTagName("HEAD")[0].appendChild(styles);
-
 
 class Canvas
 {
@@ -145,16 +144,17 @@ class Canvas
 
     clear()
     {
+        // Reset Transform and clear
         this.#ctx.setTransform(1, 0, 0, 1, 0, 0);
-
-        this.#ctx.beginPath();
         this.#ctx.clearRect(0, 0, this.width, this.height);
 
+        // Draw background
         this.#ctx.beginPath();
         this.#ctx.rect(0, 0, this.width, this.height);
         this.#ctx.fillStyle = this.colour;
         this.#ctx.fill();
 
+        // Apply global transforms
         let cPos = this.#camera.getPosition();
         let cRot = this.#camera.getRotation();
         let cSize = this.#camera.getSize();
@@ -173,6 +173,7 @@ class Canvas
         Canvas.stopAll = false;
         this.running = true;
         this.show();
+        
         this.#start();
         this.#lastCallTime = performance.now();
         this.#fps = 0;
@@ -552,6 +553,7 @@ class Camera
         this.#shape = shape;
     }
 
+    // TODO When redoing the shape and canvas scaling make sure it's implemented here if need be
     getPosition()
     {
         if (this.#shape != null) return {
@@ -1119,15 +1121,6 @@ class Rectangle extends Polygon
     {
         this.setSize(this.#width, height);
     }
-
-    // getWidth() { return this.#width * this._scale.x; }
-    // getHeight() { return this.#height * this._scale.y; }
-
-    // setScale(scaleX, scaleY)
-    // {
-    //     super.setScale(scaleX, scaleY);
-
-    // }
 
     draw(context)
     {
