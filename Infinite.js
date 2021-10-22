@@ -1,5 +1,7 @@
 // TODO list
 // -------------------------------------------------------------------
+// Current Fixing scaling and reworking all shape based classes
+
 // Current Refactor everything specifically; class constructors should be
 //         given proper error detection for their argument list
 //       - DONE Canvas constructor
@@ -31,9 +33,9 @@ import './Intersects/umd/intersects.min.js';
 var styles = document.createElement("style");
 styles.id = "Infinite-Styles";
 styles.innerHTML = "[class^='Infinite-'] { position: absolute; top: 0; left: 0; margin: 0%; padding: 0%; }\n" +
-                   ".Infinite-Canvas { background-color: 'black'; }\n" +
-                   ".Infinite-UI { width: 100%; height: 100%; }\n" +
-                   ".Infinite-FPS { font-size: 24px; }";
+    ".Infinite-Canvas { background-color: 'black'; }\n" +
+    ".Infinite-UI { width: 100%; height: 100%; }\n" +
+    ".Infinite-FPS { font-size: 24px; }";
 document.getElementsByTagName("HEAD")[0].appendChild(styles);
 
 class Canvas
@@ -53,6 +55,7 @@ class Canvas
 
     static #count = 0;
     static stopAll = false;
+    static debug = false;
 
     constructor(width = window.innerWidth, height = window.innerHeight, id = "Infinite")
     {
@@ -173,7 +176,7 @@ class Canvas
         Canvas.stopAll = false;
         this.running = true;
         this.show();
-        
+
         this.#start();
         this.#lastCallTime = performance.now();
         this.#fps = 0;
@@ -711,12 +714,21 @@ class Shape
         this.x = 0;
         this.y = 0;
 
-        this._direction = 0;
         this.colour = "black";
 
+        this._rotation = 0;
         this._scale = { x: 1.0, y: 1.0 };
-
         this._center = { x: 0, y: 0 };
+    }
+
+    setPosition(x, y)
+    {
+        if (arguments.length > 1)
+        {
+            this.x = x;
+            this.y = y;
+        }
+        else if (Canvas.debug) console.warn("setPosition missing arguments");
     }
 
     getPosition()
@@ -724,32 +736,55 @@ class Shape
         return { x: this.x, y: this.y };
     }
 
-    setPosition(x, y)
+    setRotation(degrees)
     {
-        this.x = x;
-        this.y = y;
+        if (arguments.length > 0) this._rotation = degrees % 360;
+        else if (Canvas.debug) console.warn(new Error("setRotation missing arguments"));
     }
 
-    getDirection()
+    getRotation()
     {
-        return this._direction % 360;
+        return this._rotation % 360;
     }
 
-    setDirection(degrees)
+    rotate(degrees = 0)
     {
-        this._direction = degrees % 360;
+        this._rotation = (this._rotation + degrees) % 360;
     }
 
-    turn(degrees)
+    move(distance = 1, angle = 0)
     {
-        this._direction = (this._direction + degrees) % 360;
-    }
-
-    move(distance, angle = 0)
-    {
-        let rads = ((this.getDirection() + angle) % 360) * (Math.PI / 180);
+        let rads = ((this.getRotation() + angle) % 360) * (Math.PI / 180);
         this.x += Math.round(distance * Math.sin(rads));
         this.y -= Math.round(distance * Math.cos(rads));
+    }
+
+    scale(scaleX, scaleY)
+    {
+        if (arguments.length > 1)
+        {
+            this._scale.x *= scaleX;
+            this._scale.y *= scaleY;
+        }
+        else if (arguments.length == 1)
+        {
+            this._scale.x *= scaleX;
+            this._scale.y *= scaleX;
+        }
+        else if (Canvas.debug) console.warn(new Error("scale missing arguments"));
+    }
+
+    setScale(scaleX, scaleY)
+    {
+        if (arguments.length > 1)
+        {
+            this._scale = { x: scaleX, y: scaleY };
+        }
+        else if (arguments.length == 1)
+        {
+            this._scale = { x: scaleX, y: scaleX };
+        }
+        else if (Canvas.debug) console.warn(new Error("setScale missing arguments"));
     }
 
     getScale()
@@ -757,10 +792,13 @@ class Shape
         return this._scale;
     }
 
-    setScale(scaleX, scaleY)
+    setCenter(x, y)
     {
-        this._scale.x = scaleX;
-        this._scale.y = scaleY;
+        if (arguments.length > 1)
+        {
+            this._center = { x: x, y: y };
+        }
+        else if (Canvas.debug) console.warn(new Error("setCenter missing arguments"));
     }
 
     getCenter()
@@ -768,9 +806,9 @@ class Shape
         return { x: this._center.x + this.x, y: this._center.y + this.y };
     }
 
-    setCenter(x, y)
+    getSize()
     {
-        this._center = { x: x, y: y };
+        return;
     }
 }
 
@@ -885,12 +923,17 @@ class Polygon extends Shape
             else if (y < this.#dimensions.minY) this.#dimensions.minY = y;
         }
 
-        this._center.x = (this.#dimensions.maxX - this.#dimensions.minX) / 2 * Math.abs(this._scale.x);
-        this._center.y = (this.#dimensions.maxY - this.#dimensions.minY) / 2 * Math.abs(this._scale.y);
+        this._center.x = (this.#dimensions.maxX - this.#dimensions.minX) / 2;
+        this._center.y = (this.#dimensions.maxY - this.#dimensions.minY) / 2;
 
         if (arguments.length == 2)
         {
-            this._points.push(() => { return this.#rotatePoint({ x: this.x + (x * Math.abs(this._scale.x)), y: this.y + (y * Math.abs(this._scale.y)) }) });
+            this._points.push(() => { return this.#rotatePoint(
+                {
+                    x: this.x + (x * this._scale.x) + ((this._scale.x < 0) ? this._center.x * 2 * -this._scale.x : 0),
+                    y: this.y + (y * this._scale.y) + ((this._scale.y < 0) ? this._center.y * 2 * -this._scale.y : 0)
+                });
+            });
             return true;
         }
         return false;
@@ -918,10 +961,15 @@ class Polygon extends Shape
                 if (point.y > this.#dimensions.maxY) this.#dimensions.maxY = point.y;
                 else if (point.y < this.#dimensions.minY) this.#dimensions.minY = point.y;
 
-                this._points.push(() => { return this.#rotatePoint({ x: this.x + (point.x * Math.abs(this._scale.x)), y: this.y + (point.y * Math.abs(this._scale.y)) }) });
+                this._points.push(() => { return this.#rotatePoint(
+                    {
+                        x: this.x + (point.x * this._scale.x) + ((this._scale.x < 0) ? this._center.x * 2 * -this._scale.x : 0),
+                        y: this.y + (point.y * this._scale.y) + ((this._scale.y < 0) ? this._center.y * 2 * -this._scale.y : 0) 
+                    });
+                });
             });
 
-            if (this._points.length < 3)
+            if (this._points.length > 2)
             {
                 this._points.forEach(function (point, i)
                 {
@@ -932,8 +980,8 @@ class Polygon extends Shape
                 });
                 this._lines.push(() => { return [this._points[this._points.length - 1], this._points[0]]; });
 
-                this._center.x = (this.#dimensions.maxX - this.#dimensions.minX) / 2 * Math.abs(this._scale.x);
-                this._center.y = (this.#dimensions.maxY - this.#dimensions.minY) / 2 * Math.abs(this._scale.y);
+                this._center.x = (this.#dimensions.maxX - this.#dimensions.minX) / 2;
+                this._center.y = (this.#dimensions.maxY - this.#dimensions.minY) / 2;
             }
             return true;
         }
@@ -1029,11 +1077,15 @@ class Polygon extends Shape
 
     #rotatePoint(pt)
     {
-        if (this.getDirection() != 0)
+        if (this.getRotation() != 0)
         {
-            let angle = this._direction * (Math.PI / 180); // Convert to radians
+            let angle = this._rotation * (Math.PI / 180); // Convert to radians
 
             let o = this.getCenter();
+            // o.x *= Math.abs(this._scale.x);
+            // o.y *= Math.abs(this._scale.y);
+            o.x *= (this._scale.x);
+            o.y *= (this._scale.y);
             let tempX = pt.x - o.x;
             let tempY = pt.y - o.y;
 
@@ -1048,35 +1100,50 @@ class Polygon extends Shape
     getWidth() { return (this.#dimensions.maxX - this.#dimensions.minX); }
     getHeight() { return (this.#dimensions.maxY - this.#dimensions.minY); }
 
+    // TODO Solution to getWidth if the shape is rotated or scaled but find a better way to implement it
+    getState() { return; }
+    // getWidth()
+    // {
+    //     this.#dimensions = { minX: null, maxX: null, minY: null, maxY: null };
+
+    //     let self = this;
+    //     this._points.forEach(function (point, i)
+    //     {
+    //         point = point();
+    //         if (self.#dimensions.minX == null)
+    //         {
+    //             self.#dimensions.maxX = point.x;
+    //             self.#dimensions.minX = point.x;
+    //             self.#dimensions.maxY = point.y;
+    //             self.#dimensions.minY = point.y;
+    //         }
+    //         else
+    //         {
+    //             if (point.x > self.#dimensions.maxX) self.#dimensions.maxX = point.x;
+    //             else if (point.x < self.#dimensions.minX) self.#dimensions.minX = point.x;
+    //             if (point.y > self.#dimensions.maxY) self.#dimensions.maxY = point.y;
+    //             else if (point.y < self.#dimensions.minY) self.#dimensions.minY = point.y;
+    //         }
+    //     });
+    //     return (this.#dimensions.maxX - this.#dimensions.minX);
+    // }
+
     draw(ctx)
     {
-        if (arguments.length == 2 && arguments[1] == "mask")
-        {
-            ctx.moveTo(this._points[0]().x, this._points[0]().y);
-            this._points.forEach(function (point, i)
-            {
-                if (i != 0)
-                    ctx.lineTo(point().x, point().y);
-            });
-            ctx.closePath();
-        }
-        else
-        {
-            ctx.save();
-            ctx.beginPath();
+        ctx.save();
+        ctx.beginPath();
 
-            ctx.fillStyle = this.colour;
-            ctx.moveTo(this._points[0]().x, this._points[0]().y);
-            this._points.forEach(function (point, i)
-            {
-                if (i != 0)
-                    ctx.lineTo(point().x, point().y);
-            });
-            if (this._points.length < 3) ctx.stroke();
-            else ctx.fill();
+        ctx.fillStyle = this.colour;
+        ctx.moveTo(this._points[0]().x, this._points[0]().y);
+        this._points.forEach(function (point, i)
+        {
+            if (i != 0)
+                ctx.lineTo(point().x, point().y);
+        });
+        if (this._points.length < 3) ctx.stroke();
+        else ctx.fill();
 
-            ctx.restore();
-        }
+        ctx.restore();
     }
 }
 
@@ -1100,32 +1167,32 @@ class Rectangle extends Polygon
         this._center.y = this.#height / 2;
     }
 
+    setSize(width, height)
+    {
+        if (arguments.length > 1)
+        {
+            this.#width = width;
+            this.#height = height;
+            this.setPoints([{ x: 0, y: 0 }, { x: this.#width, y: 0 }, { x: this.#width, y: this.#height }, { x: 0, y: this.#height }]);
+        }
+        else if (Canvas.debug) console.warn(new Error("setSize missing arguments"));
+    }
+
     getSize()
     {
         return { width: this.#width, height: this.#height }
     }
 
-    setSize(width, height)
-    {
-        this.#width = width;
-        this.#height = height;
-        this.setPoints([{ x: 0, y: 0 }, { x: this.#width, y: 0 }, { x: this.#width, y: this.#height }, { x: 0, y: this.#height }]);
-    }
-
     setWidth(width)
     {
-        this.setSize(width, this.#height);
+        if (arguments.length > 0) this.setSize(width, this.#height);
+        else if (Canvas.debug) console.warn(new Error("setWidth missing arguments"));
     }
 
     setHeight(height)
     {
-        this.setSize(this.#width, height);
-    }
-
-    draw(context)
-    {
-        if (arguments.length == 2 && arguments[1] == "mask") super.draw(context, arguments[1]);
-        else super.draw(context);
+        if (arguments.length > 0) this.setSize(this.#width, height);
+        else if (Canvas.debug) console.warn(new Error("setHeight missing arguments"));
     }
 }
 
@@ -1352,7 +1419,7 @@ class Sprite extends Shape
         if (this.#area instanceof Polygon)
         {
             let clone = new Polygon(this.#area.json, this.x, this.y);
-            clone._direction = this._direction;
+            clone._rotation = this._rotation;
             clone._center = this._center;
             clone._scale = this._scale;
             return clone;
@@ -1360,7 +1427,7 @@ class Sprite extends Shape
         else if (this.#area instanceof Circle)
         {
             let clone = new Circle(this.#area.radius, this.x, this.y);
-            clone._direction = this._direction;
+            clone._rotation = this._rotation;
             clone._center = this.#area._center;
             clone._scale = this._scale;
             return clone;
@@ -1403,7 +1470,7 @@ class Sprite extends Shape
         this.setCenter(this.#area._center.x, this.#area._center.y);
         let o = this.getCenter();
         context.translate(o.x, o.y);
-        context.rotate(this._direction * Math.PI / 180);
+        context.rotate(this._rotation * Math.PI / 180);
         context.translate(-o.x, -o.y);
 
         // Sprite Rotation
