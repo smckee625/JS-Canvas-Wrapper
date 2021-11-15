@@ -719,6 +719,7 @@ class Shape
         this._rotation = 0;
         this._scale = { x: 1.0, y: 1.0 };
         this._center = { x: 0, y: 0 };
+        this._dimensions = { x: 0, y: 0 };
     }
 
     setPosition(x, y)
@@ -789,7 +790,7 @@ class Shape
 
     getScale()
     {
-        return this._scale;
+        return { x: this._scale.x, y: this._scale.y };
     }
 
     setCenter(x, y)
@@ -808,7 +809,29 @@ class Shape
 
     getSize()
     {
-        return;
+        return { x: this._dimensions.x, y: this._dimensions.y };
+    }
+
+    clone(shape)
+    {
+        if (arguments.length == 0)
+        {
+            let temp = new Shape();
+            temp._dimensions = this.getSize();
+            temp._rotation = this.getRotation();
+            temp._scale = this.getScale();
+            temp.x = this.x; temp.y = this.y;
+            return temp;
+        }
+        else if (shape instanceof Shape)
+        {
+            this._dimensions = shape.getSize();
+            this._rotation = shape.getRotation();
+            this._scale = shape.getScale();
+            this.x = shape.x; this.y = shape.y;
+            return true;
+        }
+        else return null;
     }
 }
 
@@ -954,7 +977,7 @@ class Polygon extends Shape
             this.#dimensions.minY = json[0].y;
             this.#dimensions.maxY = json[0].y;
 
-            json.forEach(point =>
+            this.json.forEach(point =>
             {
                 if (point.x > this.#dimensions.maxX) this.#dimensions.maxX = point.x;
                 else if (point.x < this.#dimensions.minX) this.#dimensions.minX = point.x;
@@ -963,11 +986,14 @@ class Polygon extends Shape
 
                 this._points.push(() => { return this.#rotatePoint(
                     {
-                        x: this.x + (point.x * this._scale.x) + ((this._scale.x < 0) ? this._center.x * 2 * -this._scale.x : 0),
-                        y: this.y + (point.y * this._scale.y) + ((this._scale.y < 0) ? this._center.y * 2 * -this._scale.y : 0) 
+                        x: this.x + (point.x * this._scale.x) + ((this._scale.x < 0) ? this._dimensions.x * -this._scale.x : 0),
+                        y: this.y + (point.y * this._scale.y) + ((this._scale.y < 0) ? this._dimensions.y * -this._scale.y : 0) 
                     });
                 });
             });
+
+            this._dimensions.x = this.#dimensions.maxX - this.#dimensions.minX;
+            this._dimensions.y = this.#dimensions.maxY - this.#dimensions.minY;
 
             if (this._points.length > 2)
             {
@@ -979,9 +1005,6 @@ class Polygon extends Shape
                     }
                 });
                 this._lines.push(() => { return [this._points[this._points.length - 1], this._points[0]]; });
-
-                this._center.x = (this.#dimensions.maxX - this.#dimensions.minX) / 2;
-                this._center.y = (this.#dimensions.maxY - this.#dimensions.minY) / 2;
             }
             return true;
         }
@@ -1081,11 +1104,10 @@ class Polygon extends Shape
         {
             let angle = this._rotation * (Math.PI / 180); // Convert to radians
 
-            let o = this.getCenter();
-            // o.x *= Math.abs(this._scale.x);
-            // o.y *= Math.abs(this._scale.y);
-            o.x *= (this._scale.x);
-            o.y *= (this._scale.y);
+            var o = {x:0,y:0};
+            o.x = this.x + Math.abs(this._dimensions.x * this._scale.x) / 2;
+            o.y = this.y + Math.abs(this._dimensions.y * this._scale.y) / 2;
+
             let tempX = pt.x - o.x;
             let tempY = pt.y - o.y;
 
@@ -1102,31 +1124,6 @@ class Polygon extends Shape
 
     // TODO Solution to getWidth if the shape is rotated or scaled but find a better way to implement it
     getState() { return; }
-    // getWidth()
-    // {
-    //     this.#dimensions = { minX: null, maxX: null, minY: null, maxY: null };
-
-    //     let self = this;
-    //     this._points.forEach(function (point, i)
-    //     {
-    //         point = point();
-    //         if (self.#dimensions.minX == null)
-    //         {
-    //             self.#dimensions.maxX = point.x;
-    //             self.#dimensions.minX = point.x;
-    //             self.#dimensions.maxY = point.y;
-    //             self.#dimensions.minY = point.y;
-    //         }
-    //         else
-    //         {
-    //             if (point.x > self.#dimensions.maxX) self.#dimensions.maxX = point.x;
-    //             else if (point.x < self.#dimensions.minX) self.#dimensions.minX = point.x;
-    //             if (point.y > self.#dimensions.maxY) self.#dimensions.maxY = point.y;
-    //             else if (point.y < self.#dimensions.minY) self.#dimensions.minY = point.y;
-    //         }
-    //     });
-    //     return (this.#dimensions.maxX - this.#dimensions.minX);
-    // }
 
     draw(ctx)
     {
@@ -1134,6 +1131,7 @@ class Polygon extends Shape
         ctx.beginPath();
 
         ctx.fillStyle = this.colour;
+
         ctx.moveTo(this._points[0]().x, this._points[0]().y);
         this._points.forEach(function (point, i)
         {
@@ -1144,6 +1142,29 @@ class Polygon extends Shape
         else ctx.fill();
 
         ctx.restore();
+    }
+
+    clone(shape)
+    {
+        if (arguments.length == 0)
+        {
+            let temp = new Polygon(JSON.parse(JSON.stringify(this.json)), this.x, this.y);
+            temp._dimensions = this.getSize();
+            temp._rotation = this.getRotation();
+            temp._scale = this.getScale();
+            temp.x = this.x; temp.y = this.y;
+            return temp;
+        }
+        else if (shape instanceof Polygon)
+        {
+            this.setPoints(JSON.parse(JSON.stringify(shape.json)));
+            this._dimensions = shape.getSize();
+            this._rotation = shape.getRotation();
+            this._scale = shape.getScale();
+            this.x = shape.x; this.y = shape.y;
+            return true;
+        }
+        else return null;
     }
 }
 
@@ -1287,7 +1308,6 @@ class Texture
             return (async () =>
             {
                 this.#img = await this.loadTexture(src);
-
                 return this;
             })();
         }
@@ -1339,6 +1359,7 @@ class Texture
             canvas.height = this.#area.getHeight();
 
             context.translate(-this.#area.x, -this.#area.y);
+            this.#area.colour = 'rgba(0,0,0,0)';
             this.#area.draw(context);
             context.clip();
             context.drawImage(this.#img, 0, 0);
@@ -1350,8 +1371,8 @@ class Texture
             let canvas = document.createElement("canvas");
             let context = canvas.getContext("2d");
 
-            canvas.width = this.#area.getWidth();
-            canvas.height = this.#area.getHeight();
+            canvas.width = shape.getWidth();
+            canvas.height = shape.getHeight();
 
             context.translate(-shape.x, -shape.y);
             shape.draw(context);
@@ -1390,7 +1411,7 @@ class Sprite extends Shape
                 {
                     this.#area = new Rectangle(this.#texture.getImage().width, this.#texture.getImage().height);
                 }
-                this.#texture.setArea(this.#area);
+                this.setTextureArea(this.#area);
                 return this;
             })();
         }
@@ -1405,7 +1426,7 @@ class Sprite extends Shape
             {
                 this.#area = new Rectangle(this.#texture.getImage().width, this.#texture.getImage().height);
             }
-            this.#texture.setArea(this.#area);
+            this.setTextureArea(this.#area);
         }
     }
 
@@ -1448,10 +1469,12 @@ class Sprite extends Shape
     {
         if (area instanceof Shape)
         {
-            this.#area = area;
-            return this.#area;
+            this.#area = area.clone();
+            this.#area.clone(this);
+            this.#texture.setArea(area);
+            return true;
         }
-        return null
+        return false;
     }
 
     flip(horizontal = false, vertical = false)
@@ -1462,20 +1485,24 @@ class Sprite extends Shape
 
     draw(context)
     {
+        this.#area.clone(this);
+
         context.save();
 
         context.beginPath();
 
         // Sprite Rotation
-        this.setCenter(this.#area._center.x, this.#area._center.y);
-        let o = this.getCenter();
+        let o = {
+            x: this.x + Math.abs(this.getWidth() * this._scale.x) / 2,
+            y: this.y + Math.abs(this.getHeight() * this._scale.y) / 2
+        };
         context.translate(o.x, o.y);
         context.rotate(this._rotation * Math.PI / 180);
         context.translate(-o.x, -o.y);
 
         // Sprite Rotation
-        if (this._scale.x == -1) context.translate(this.#area.getWidth() * this.#area._scale.x, 0);
-        if (this._scale.y == -1) context.translate(0, this.#area.getHeight() * this.#area._scale.y);
+        if (this._scale.x < 0) context.translate(-this.#area.getWidth() * this._scale.x, 0);
+        if (this._scale.y < 0) context.translate(0, -this.#area.getHeight() * this._scale.y);
         context.translate(-(this.x * (this._scale.x - 1)), -(this.y * (this._scale.y - 1)));
         context.scale(this._scale.x, this._scale.y);
 
