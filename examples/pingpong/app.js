@@ -18,7 +18,7 @@ p2.colour = 'green';
 var ball = new Circle(15);
 ball.colour = 'white';
 ball.setPosition(canvas.width / 2, canvas.height / 2)
-ball.setDirection(90);
+ball.setRotation(90);
 
 // Bounce Walls
 var topWall = new Rectangle(canvas.width, 20);
@@ -48,7 +48,7 @@ canvas.onUpdate(async () =>
     {
         s1.value++;
         ball.setPosition(canvas.width / 2, canvas.height / 2)
-        ball.setDirection(Util.random(0,360))
+        ball.setRotation(Util.random(0,360))
 
         canvas.colour = 'lightblue';
         Util.delay(() => { canvas.colour = 'black'; }, 300);
@@ -57,18 +57,18 @@ canvas.onUpdate(async () =>
     {
         s2.value++;
         ball.setPosition(canvas.width / 2, canvas.height / 2)
-        ball.setDirection(Util.random(0,360))
+        ball.setRotation(Util.random(0,360))
 
         canvas.colour = 'lightgreen';
         Util.delay(() => { canvas.colour = 'black'; }, 300);
     }
 
     // Ball bounce when player is hit
-    if (ball.intersects(p2)) ball.setDirection(Util.random(225, 315));
-    if (ball.intersects(p1)) ball.setDirection(Util.random(45, 135));
+    if (ball.intersects(p2)) ball.setRotation(Util.random(225, 315));
+    if (ball.intersects(p1)) ball.setRotation(Util.random(45, 135));
 
     // Ball wall bounce
-    if (ball.intersects(topWall) || ball.intersects(bottomWall)) ball.setDirection(180 - ball.getDirection());
+    if (ball.intersects(topWall) || ball.intersects(bottomWall)) ball.setRotation(180 - ball.getRotation());
 
     // Ball Move
     ball.move(7);
