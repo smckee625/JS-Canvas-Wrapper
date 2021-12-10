@@ -127,6 +127,7 @@ class Canvas
 
         // Finish Infinite elements
         this.#canvas.tabIndex = '1';
+        this.#canvas.oncontextmenu = function (e) { e.preventDefault(); e.stopPropagation(); }
         this.#ctx = this.#canvas.getContext("2d", { alpha: false });
 
         // FPS 
@@ -235,8 +236,8 @@ class Canvas
 
     setPosition(x, y)
     {
-        this.#infinite.style.top = y;
-        this.#infinite.style.left = x;
+        this.#canvas.style.top = y;
+        this.#canvas.style.left = x;
     }
 
     setFullscreen(stretch = false)
@@ -299,22 +300,6 @@ class Canvas
 
 class Events 
 {
-    #mouse = {
-        position: {
-            x: null,
-            y: null
-        },
-        change: {
-            x: null,
-            y: null
-        },
-        button: {
-            left: false,
-            middle: false,
-            right: false,
-            other: false
-        }
-    };
     #touch = {
         isTouch: false,
         position: {
@@ -327,95 +312,17 @@ class Events
         }
     };
 
-    #interval = 50;
-    #lastCall = 0;
-
-    #lastKeyDown;
-    #lastKeyPress = 'p';
+    #keyboard;
+    #mouse;
+    //#touch;
 
     constructor(canvas, options)
     {
-        this.pressedKeys = {};
         var self = this;
         let HTMLCanvas = canvas.getHTMLCanvas();
 
-        if (options['keyboard'])
-        {
-            window.onkeydown = function (e)
-            {
-                self.pressedKeys[e.key.toLowerCase()] = true;
-                self.#lastKeyDown = e.key.toLowerCase();
-                self.#lastKeyPress = '';
-            };
-            window.onkeyup = function (e)
-            {
-                self.pressedKeys[e.key.toLowerCase()] = false;
-                self.#lastKeyPress = e.key;
-            };
-            window.onblur = function (e)
-            {
-                self.pressedKeys = {};
-            };
-        }
-        if (options['mouse'])
-        {
-            HTMLCanvas.oncontextmenu = function (e) { e.preventDefault(); e.stopPropagation(); }
-            window.onmousemove = function (e)
-            {
-                if (Date.now() - self.#lastCall > self.#interval)
-                {
-                    var rect = HTMLCanvas.getBoundingClientRect();
-                    let x = Math.round((e.clientX - rect.left) / (rect.right - rect.left) * HTMLCanvas.width);
-                    let y = Math.round((e.clientY - rect.top) / (rect.bottom - rect.top) * HTMLCanvas.height);
-                    if (x <= 0) x = 0;
-                    if (y <= 0) y = 0;
-                    self.#mouse.position = {
-                        x: x,
-                        y: y
-                    };
-                    self.#mouse.change = { x: e.movementX, y: e.movementY };
-                    self.#lastCall = Date.now();
-                }
-            }
-            window.onmousedown = function (e)
-            {
-                let arr = [0, 0, 0, 0];
-                let buttons = e.buttons;
-                let index = 3;
-                for (let i = 16; i >= 1; i /= 2)
-                {
-                    if (buttons - i >= 0) 
-                    {
-                        arr[index]++;
-                        buttons -= i;
-                    }
-                    if (i != 16) index--;
-                }
-                self.#mouse.button.left = Boolean(arr[0]);
-                self.#mouse.button.right = Boolean(arr[1]);
-                self.#mouse.button.middle = Boolean(arr[2]);
-                self.#mouse.button.other = Boolean(arr[3]);
-            }
-            window.onmouseup = function (e)
-            {
-                let arr = [0, 0, 0, 0];
-                let buttons = e.buttons;
-                let index = 3;
-                for (let i = 16; i >= 1; i /= 2)
-                {
-                    if (buttons - i >= 0) 
-                    {
-                        arr[index]++;
-                        buttons -= i;
-                    }
-                    if (i != 16) index--;
-                }
-                self.#mouse.button.left = Boolean(arr[0]);
-                self.#mouse.button.right = Boolean(arr[1]);
-                self.#mouse.button.middle = Boolean(arr[2]);
-                self.#mouse.button.other = Boolean(arr[3]);
-            }
-        }
+        if (options['keyboard']) this.#keyboard = new Keyboard(canvas);
+        if (options['mouse']) this.#mouse = new Mouse(canvas);
         if (options['touch'])
         {
             window.ontouchstart = function (evt)
@@ -487,30 +394,9 @@ class Events
             };
         }
     }
-
-    isKeyDown(key)
-    {
-        return this.pressedKeys[key.toLowerCase()];
-    }
-
-    wasKeyPressed(key)
-    {
-        if (key.toLowerCase() == this.#lastKeyPress.toLowerCase())
-        {
-            this.#lastKeyPress = '';
-            return true;
-        }
-        else return false;
-    }
-
-    getLastKeyPressed()
-    {
-        return this.#lastKeyDown;
-    }
-
     getKeyboard()
     {
-        return this.pressedKeys;
+        return this.#keyboard;
     }
 
     getMouse()
@@ -523,9 +409,326 @@ class Events
         return this.#touch;
     }
 
+    /** create() allows you to create/store crossplatform conditional statements that
+     * can be run using, Events.try(name)
+     * 
+     * The function you pass in should not alter any variable values */
+    create(name, func)
+    {
+        if (name != "getKeyboard" && name != "getMouse" && name != "getTouch")
+        {
+            Events.prototype[name] = function()
+            {
+                return func(this, this.#keyboard, this.#mouse, this.#touch);
+            };
+        }
+    }
+}
+
+
+
+class Keyboard
+{
+    static #pressedKeys = {};
+    static #lastKeyDown = '';
+    static #lastKeyUp = '';
+
+    static #staticConstructor = (() =>
+    {
+        window.onkeydown = function (e)
+        {
+            Keyboard.#pressedKeys[e.key.toLowerCase()] = true;
+            Keyboard.#lastKeyDown = e.key.toLowerCase();
+        };
+        window.onkeyup = function (e)
+        {
+            Keyboard.#pressedKeys[e.key.toLowerCase()] = false;
+            Keyboard.#lastKeyUp = e.key;
+        };
+        window.onblur = function (e)
+        {
+            Keyboard.#pressedKeys = {};
+        };
+    })();
+
+    static isKeyDown(key)
+    {
+        return Keyboard.#pressedKeys[key.toLowerCase()];
+    }
+
+    static getLastKeyDown()
+    {
+        return Keyboard.#lastKeyDown;
+    }
+
+    static getLastKeyPressed()
+    {
+        return Keyboard.#lastKeyUp;
+    }
+
+
+
+    #pressedKeys2 = {};
+    #lastKeyDown2 = '';
+    #lastKeyUp2 = '';
+    #element = null;
+
+    constructor(element)
+    {
+        if (arguments.length > 0) this.setTarget(element);
+        else console.warn("This Keyboard instance is missing a HTML element parameter");
+    }
+
+    setTarget(element)
+    {
+        if (this.#element != null)
+        {
+            this.#element.onkeydown = () => { };
+            this.#element.onkeyup = () => { };
+            this.#element.blur = () => { };
+            this.#element = null;
+        }
+
+        if (element instanceof Canvas) element = element.getHTMLCanvas();
+        if (element instanceof Element)
+        {
+            let self = this;
+            element.onkeydown = function (e)
+            {
+                self.#pressedKeys2[e.key.toLowerCase()] = true;
+                self.#lastKeyDown2 = e.key.toLowerCase();
+            };
+            element.onkeyup = function (e)
+            {
+                self.#pressedKeys2[e.key.toLowerCase()] = false;
+                self.#lastKeyUp2 = e.key;
+            };
+            element.onblur = function (e)
+            {
+                self.#pressedKeys2 = {};
+            };
+            this.#element = element;
+        }
+        else console.warn("This Keyboard instance is not linked to an HTML element");
+    }
+
+    isKeyDown(key)
+    {
+        return this.#pressedKeys2[key.toLowerCase()];
+    }
+
+    getLastKeyDown()
+    {
+        return this.#lastKeyDown2;
+    }
+
+    getLastKeyPressed()
+    {
+        return this.#lastKeyUp2;
+    }
+}
+
+
+
+class Mouse
+{
+    static #state = {
+        position: {
+            x: null,
+            y: null
+        },
+        change: {
+            x: null,
+            y: null
+        },
+        button: {
+            left: false,
+            middle: false,
+            right: false,
+            other: false
+        }
+    };
+
+    static #interval = 50;
+    static #lastCall = 0;
+
+    static #staticConstructor = (() =>
+    {
+        window.onmousemove = function (e)
+        {
+            if (Date.now() - Mouse.#lastCall > Mouse.#interval)
+            {
+                Mouse.#state.position = {
+                    x: e.clientX,
+                    y: e.clientY
+                };
+                Mouse.#state.change = { x: e.movementX, y: e.movementY };
+                Mouse.#lastCall = Date.now();
+            }
+        }
+
+        function updateButtons(e)
+        {
+            let arr = [0, 0, 0, 0];
+            let buttons = e.buttons;
+            let index = 3;
+            for (let i = 16; i >= 1; i /= 2)
+            {
+                if (buttons - i >= 0) 
+                {
+                    arr[index]++;
+                    buttons -= i;
+                }
+                if (i != 16) index--;
+            }
+            Mouse.#state.button.left = Boolean(arr[0]);
+            Mouse.#state.button.right = Boolean(arr[1]);
+            Mouse.#state.button.middle = Boolean(arr[2]);
+            Mouse.#state.button.other = Boolean(arr[3]);
+        }
+        window.onmousedown = updateButtons;
+        window.onmouseup = updateButtons;
+    })();
+
+    static getPosition(canvas)
+    {
+        if (canvas instanceof Canvas)
+        {
+            let HTMLCanvas = canvas.getHTMLCanvas();
+            var rect = HTMLCanvas.getBoundingClientRect();
+
+            let x = Math.round((Mouse.#state.position.x - rect.left) / (rect.right - rect.left) * HTMLCanvas.width);
+            let y = Math.round((Mouse.#state.position.y - rect.top) / (rect.bottom - rect.top) * HTMLCanvas.height);
+
+            return { x: x, y: y };
+        }
+        else return Mouse.#state.position;
+    }
+
+    static getButtons()
+    {
+        return Mouse.#state.button;
+    }
+
+    static getChange()
+    {
+        return Mouse.#state.change;
+    }
+
+    static getState()
+    {
+        return Mouse.#state;
+    }
+
+    static setCallsPerSecond(number)
+    {
+        Mouse.#interval = 1000.0 / number;
+    }
+
+
+
+    #state2 = {
+        position: {
+            x: null,
+            y: null
+        },
+        change: {
+            x: null,
+            y: null
+        },
+        button: {
+            left: false,
+            middle: false,
+            right: false,
+            other: false
+        }
+    };
+
+    #interval2 = 50;
+    #lastCall2 = 0;
+    #element;
+
+    constructor(element)
+    {
+        if (arguments.length > 0) this.setTarget(element);
+        else console.warn("This Mouse instance is missing a HTML element parameter");
+    }
+
+    setTarget(element)
+    {
+        if (this.#element != null)
+        {
+            // this.#element.onmousemove = () => { };
+            // this.#element.onmousedown = () => { };
+            // this.#element.onmouseup = () => { };
+            this.#element = null;
+        }
+
+        if (element instanceof Canvas) element = element.getHTMLCanvas();
+        if (element instanceof Element)
+        {
+            let self = this;
+
+            function updateButtons(e)
+            {
+                let arr = [0, 0, 0, 0];
+                let buttons = e.buttons;
+                let index = 3;
+                for (let i = 16; i >= 1; i /= 2)
+                {
+                    if (buttons - i >= 0) 
+                    {
+                        arr[index]++;
+                        buttons -= i;
+                    }
+                    if (i != 16) index--;
+                }
+                self.#state2.button.left = Boolean(arr[0]);
+                self.#state2.button.right = Boolean(arr[1]);
+                self.#state2.button.middle = Boolean(arr[2]);
+                self.#state2.button.other = Boolean(arr[3]);
+            }
+            element.addEventListener("mousedown", updateButtons);
+            element.addEventListener("mouseup", updateButtons);
+
+            this.#element = element;
+        }
+        else console.warn("This Mouse instance is not linked to an HTML element");
+    }
+    
+    getPosition()
+    {
+        if (this.#element instanceof Element)
+        {
+            var rect = this.#element.getBoundingClientRect();
+
+            let x = Math.round((Mouse.#state.position.x - rect.left) / (rect.right - rect.left) * this.#element.width);
+            let y = Math.round((Mouse.#state.position.y - rect.top) / (rect.bottom - rect.top) * this.#element.height);
+
+            return { x: x, y: y };
+        }
+        else return Mouse.#state.position;
+    }
+
+    getButtons()
+    {
+        return this.#state2.button;
+    }
+
+    getChange()
+    {
+        return this.#state2.change;
+    }
+
+    getState()
+    {
+        this.#state2.position = this.getPosition();
+        return this.#state2;
+    }
+
     setCallsPerSecond(number)
     {
-        this.#interval = 1000.0 / number;
+        this.#interval2 = 1000.0 / number;
     }
 }
 
@@ -951,11 +1154,13 @@ class Polygon extends Shape
 
         if (arguments.length == 2)
         {
-            this._points.push(() => { return this.#rotatePoint(
-                {
-                    x: this.x + (x * this._scale.x) + ((this._scale.x < 0) ? this._center.x * 2 * -this._scale.x : 0),
-                    y: this.y + (y * this._scale.y) + ((this._scale.y < 0) ? this._center.y * 2 * -this._scale.y : 0)
-                });
+            this._points.push(() =>
+            {
+                return this.#rotatePoint(
+                    {
+                        x: this.x + (x * this._scale.x) + ((this._scale.x < 0) ? this._center.x * 2 * -this._scale.x : 0),
+                        y: this.y + (y * this._scale.y) + ((this._scale.y < 0) ? this._center.y * 2 * -this._scale.y : 0)
+                    });
             });
             return true;
         }
@@ -984,11 +1189,13 @@ class Polygon extends Shape
                 if (point.y > this.#dimensions.maxY) this.#dimensions.maxY = point.y;
                 else if (point.y < this.#dimensions.minY) this.#dimensions.minY = point.y;
 
-                this._points.push(() => { return this.#rotatePoint(
-                    {
-                        x: this.x + (point.x * this._scale.x) + ((this._scale.x < 0) ? this._dimensions.x * -this._scale.x : 0),
-                        y: this.y + (point.y * this._scale.y) + ((this._scale.y < 0) ? this._dimensions.y * -this._scale.y : 0) 
-                    });
+                this._points.push(() =>
+                {
+                    return this.#rotatePoint(
+                        {
+                            x: this.x + (point.x * this._scale.x) + ((this._scale.x < 0) ? this._dimensions.x * -this._scale.x : 0),
+                            y: this.y + (point.y * this._scale.y) + ((this._scale.y < 0) ? this._dimensions.y * -this._scale.y : 0)
+                        });
                 });
             });
 
@@ -1104,7 +1311,7 @@ class Polygon extends Shape
         {
             let angle = this._rotation * (Math.PI / 180); // Convert to radians
 
-            var o = {x:0,y:0};
+            var o = { x: 0, y: 0 };
             o.x = this.x + Math.abs(this._dimensions.x * this._scale.x) / 2;
             o.y = this.y + Math.abs(this._dimensions.y * this._scale.y) / 2;
 
@@ -1554,3 +1761,4 @@ class DisplayText
 export { Canvas, Events, Camera, Util };
 export { Line, Polygon, Rectangle, Circle, Sprite };
 export { DisplayText, Texture };
+export { Keyboard, Mouse };

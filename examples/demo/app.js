@@ -1,12 +1,9 @@
-import { Canvas, Events, Rectangle, Sprite, Texture, Util } from '../../Infinite.js';
+import { Canvas, Keyboard, Rectangle, Sprite, Util } from '../../Infinite.js';
 
 // Create Canvas
 var canvas = new Canvas();
 canvas.colour = 'lightblue';
 canvas.setFullscreen(false);
-
-// Create Event system
-var events = new Events(canvas, { keyboard: true, mouse: false, touch: false, debug: false });
 
 // Texture Area
 var rectArea = new Rectangle(55, 67, 13, 115);
@@ -23,12 +20,12 @@ canvas.getCamera().track(p);
 // Animation runs every 140ms
 Util.repeat(() =>
 {
-    if (events.isKeyDown("d"))
+    if (Keyboard.isKeyDown("d"))
     {
         p.setScale(1, 1);
         rectArea.x += 80;
     }
-    else if (events.isKeyDown("a"))
+    else if (Keyboard.isKeyDown("a"))
     {
         // Flip sprite
         p.setScale(-1, 1);
@@ -46,11 +43,10 @@ Util.repeat(() =>
 canvas.onUpdate(async () =>
 {
     // Movement & Rotation
-    if (events.isKeyDown("w")) p.y--;
-    if (events.isKeyDown("a")) p.x--;
-    if (events.isKeyDown("s")) p.y++;
-    if (events.isKeyDown("d")) p.x++;
-    if (events.wasKeyPressed("r")) p.turn(30);
+    if (Keyboard.isKeyDown("w")) p.y--;
+    if (Keyboard.isKeyDown("a")) p.x--;
+    if (Keyboard.isKeyDown("s")) p.y++;
+    if (Keyboard.isKeyDown("d")) p.x++;
 
     // Detect intersect
     if (center.intersects(p)) center.colour = 'red';

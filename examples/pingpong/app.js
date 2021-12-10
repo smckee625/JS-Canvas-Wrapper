@@ -1,7 +1,6 @@
-import { Canvas, Events, Rectangle, Circle, DisplayText, Util } from '../../Infinite.js';
+import { Canvas, Rectangle, Circle, DisplayText, Util, Keyboard } from '../../Infinite.js';
 
 var canvas = new Canvas();
-var events = new Events(canvas, { keyboard: true, mouse: false, touch: false, debug: false });
 canvas.colour = "black";
 canvas.fpsVisible(false);
 
@@ -38,10 +37,10 @@ s2.colour = 'green';
 canvas.onUpdate(async () =>
 {
     // Movement
-    if (events.isKeyDown('s')) p1.y += 5;
-    if (events.isKeyDown('w')) p1.y -= 5;
-    if (events.isKeyDown('arrowdown')) p2.y += 5;
-    if (events.isKeyDown('arrowup')) p2.y -= 5;
+    if (Keyboard.isKeyDown('s')) p1.y += 5;
+    if (Keyboard.isKeyDown('w')) p1.y -= 5;
+    if (Keyboard.isKeyDown('arrowdown')) p2.y += 5;
+    if (Keyboard.isKeyDown('arrowup')) p2.y -= 5;
 
     // Scoring
     if (ball.x > canvas.width)
