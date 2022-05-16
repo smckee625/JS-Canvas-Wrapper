@@ -3,4 +3,4 @@ WIP. A simple to use object oriented garphics library using the Canvas API to al
 
 It still needs a lot of work but currently contains the basics needed to create simple 2d games/graphics. You can check out the examples folder to see some simple demos.
 
-Uses https://github.com/davidfig/intersects library for most of the intersection code. All code and license information can be found in the intersects directory
+Uses https://github.com/davidfig/intersects library for most of the intersection code. All code and license information relating to this library can be found in the intersects directory
