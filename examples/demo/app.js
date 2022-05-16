@@ -6,56 +6,54 @@ canvas.colour = 'lightblue';
 canvas.setFullscreen(false);
 
 // Texture Area
-var rectArea = new Rectangle(55, 67, 13, 115);
-
-// Random Rectangle
-var center = new Rectangle(10, 10, -5, -5);
+var textureArea = new Rectangle(55, 68, 13, 115);
 
 // Player Sprite
-var p = await new Sprite('spritesheet.png', rectArea);
+var player = await new Sprite('spritesheet.png', textureArea);
 
 // Center camera on player
-canvas.getCamera().track(p);
+canvas.getCamera().track(player);
 
-// Animation runs every 140ms
+// Random Center Rectangle to show movement
+var box = new Rectangle(10, 10, 0, 0);
+
+// Animation runs every 140ms, moving the textureArea move the sprites texture location on the spritesheet
 Util.repeat(() =>
 {
     if (Keyboard.isKeyDown("d"))
     {
-        p.setScale(1, 1);
-        rectArea.x += 80;
+        player.setScale(1, 1);
+        textureArea.x += 80;
     }
     else if (Keyboard.isKeyDown("a"))
     {
         // Flip sprite
-        p.setScale(-1, 1);
-        rectArea.x += 80;
+        player.setScale(-1, 1);
+        textureArea.x += 80;
     }
-    else
-    {
-        rectArea.x = 13;
-    }
-    // Reset animation position
-    if (rectArea.x > 400) rectArea.x = 13;
-}, 140);
+    else textureArea.x = 13;
+
+    // Loop animation position
+    if (textureArea.x > 400) textureArea.x = 13;
+}, 125);
 
 // Game Loop
-canvas.onUpdate(async () =>
+canvas.onUpdate(() =>
 {
-    // Movement & Rotation
-    if (Keyboard.isKeyDown("w")) p.y--;
-    if (Keyboard.isKeyDown("a")) p.x--;
-    if (Keyboard.isKeyDown("s")) p.y++;
-    if (Keyboard.isKeyDown("d")) p.x++;
+    // Movement Input
+    if (Keyboard.isKeyDown("w")) player.y-=2;
+    if (Keyboard.isKeyDown("a")) player.x-=2;
+    if (Keyboard.isKeyDown("s")) player.y+=2;
+    if (Keyboard.isKeyDown("d")) player.x+=2;
 
     // Detect intersect
-    if (center.intersects(p)) center.colour = 'red';
-    else if (center.colour == 'red') center.colour = 'black';
+    if (box.intersects(player)) box.colour = 'red';
+    else if (box.colour == 'red') box.colour = 'black';
 
     // Display
     canvas.clear();
-    canvas.draw(center);
-    canvas.draw(p);
+    canvas.draw(box);
+    canvas.draw(player);
 });
 
 // Run game

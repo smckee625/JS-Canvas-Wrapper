@@ -47,19 +47,19 @@ canvas.onUpdate(async () =>
     {
         s1.value++;
         ball.setPosition(canvas.width / 2, canvas.height / 2)
-        ball.setRotation(Util.random(0,360))
+        ball.setRotation(Util.random(185,255))
 
         canvas.colour = 'lightblue';
-        Util.delay(() => { canvas.colour = 'black'; }, 300);
+        Util.delay(() => canvas.colour = 'black', 300);
     }
     else if (ball.x < 0)
     {
         s2.value++;
         ball.setPosition(canvas.width / 2, canvas.height / 2)
-        ball.setRotation(Util.random(0,360))
+        ball.setRotation(Util.random(5,175))
 
         canvas.colour = 'lightgreen';
-        Util.delay(() => { canvas.colour = 'black'; }, 300);
+        Util.delay(() => canvas.colour = 'black', 300);
     }
 
     // Ball bounce when player is hit
