@@ -298,7 +298,7 @@ class Canvas
 
 
 
-class Events 
+class Input 
 {
     #touch = {
         isTouch: false,
@@ -312,17 +312,11 @@ class Events
         }
     };
 
-    #keyboard;
-    #mouse;
-    //#touch;
-
     constructor(canvas, options)
     {
         var self = this;
         let HTMLCanvas = canvas.getHTMLCanvas();
 
-        if (options['keyboard']) this.#keyboard = new Keyboard(canvas);
-        if (options['mouse']) this.#mouse = new Mouse(canvas);
         if (options['touch'])
         {
             window.ontouchstart = function (evt)
@@ -394,32 +388,22 @@ class Events
             };
         }
     }
-    getKeyboard()
-    {
-        return this.#keyboard;
-    }
-
-    getMouse()
-    {
-        return this.#mouse;
-    }
 
     getTouch()
     {
         return this.#touch;
     }
 
-    /** create() allows you to create/store crossplatform conditional statements that
-     * can be run using, Events.try(name)
-     * 
-     * The function you pass in should not alter any variable values */
-    create(name, func)
+    /** create(name, func) allows you to create/store crossplatform conditional statements that
+     * can be run using, Input.{name}() */
+    static create(name, func)
     {
-        if (name != "getKeyboard" && name != "getMouse" && name != "getTouch")
+        if (name != "getTouch")
         {
-            Events.prototype[name] = function()
+            Input[name] = function ()
             {
-                return func(this, this.#keyboard, this.#mouse, this.#touch);
+                if (arguments.length > 0) return func(...arguments);
+                else return func();
             };
         }
     }
@@ -427,104 +411,148 @@ class Events
 
 
 
+
 class Keyboard
 {
-    static #pressedKeys = {};
-    static #lastKeyDown = '';
-    static #lastKeyUp = '';
+    // Static Keyboard - Looks for keypresses in the entire window
 
-    static #staticConstructor = (() =>
+    static #isEnabled = false;
+    static #globalPressedKeys = {};
+    static #globalLastKeyDown = '';
+    static #globalLastKeyUp = '';
+
+    static #globalDownHandler;
+    static #globalUpHandler;
+    static #globalBlurHandler;
+
+    static #onGlobalKeyDown(e)
     {
-        window.onkeydown = function (e)
+        Keyboard.#globalPressedKeys[e.key.toLowerCase()] = true;
+        Keyboard.#globalLastKeyDown = e.key.toLowerCase();
+    }
+    static #onGlobalKeyUp(e)
+    {
+        Keyboard.#globalPressedKeys[e.key.toLowerCase()] = false;
+        Keyboard.#globalLastKeyUp = e.key;
+    }
+    static #onGlobalBlur(e)
+    {
+        Keyboard.#globalPressedKeys = {};
+    }
+
+    static #init()
+    {
+        if (!this.#isEnabled)
         {
-            Keyboard.#pressedKeys[e.key.toLowerCase()] = true;
-            Keyboard.#lastKeyDown = e.key.toLowerCase();
-        };
-        window.onkeyup = function (e)
-        {
-            Keyboard.#pressedKeys[e.key.toLowerCase()] = false;
-            Keyboard.#lastKeyUp = e.key;
-        };
-        window.onblur = function (e)
-        {
-            Keyboard.#pressedKeys = {};
-        };
-    })();
+            Keyboard.#globalDownHandler = Keyboard.#onGlobalKeyDown.bind(this);
+            Keyboard.#globalUpHandler = Keyboard.#onGlobalKeyUp.bind(this);
+            Keyboard.#globalBlurHandler = Keyboard.#onGlobalBlur.bind(this);
+
+            window.addEventListener('keydown', Keyboard.#globalDownHandler);
+            window.addEventListener("keyup", Keyboard.#globalUpHandler);
+            window.addEventListener("blur", Keyboard.#globalBlurHandler);
+
+            this.#isEnabled = true;
+        }
+    }
 
     static isKeyDown(key)
     {
-        return Keyboard.#pressedKeys[key.toLowerCase()];
+        Keyboard.#init();
+        return Keyboard.#globalPressedKeys[key.toLowerCase()];
     }
 
     static getLastKeyDown()
     {
-        return Keyboard.#lastKeyDown;
+        Keyboard.#init();
+        return Keyboard.#globalLastKeyDown;
     }
 
     static getLastKeyPressed()
     {
-        return Keyboard.#lastKeyUp;
+        Keyboard.#init();
+        return Keyboard.#globalLastKeyUp;
     }
 
 
 
-    #pressedKeys2 = {};
-    #lastKeyDown2 = '';
-    #lastKeyUp2 = '';
+
+    // Non-Static Keyboard - Looks for keypresses in a HTML element
+
+    #pressedKeys = {};
+    #lastKeyDown = '';
+    #lastKeyUp = '';
     #element = null;
 
-    constructor(element)
+    #downHandler;
+    #upHandler;
+    #blurHandler;
+
+    constructor(HTML_Element)
     {
-        if (arguments.length > 0) this.setTarget(element);
+        if (arguments.length > 0) this.setTarget(HTML_Element);
         else console.warn("This Keyboard instance is missing a HTML element parameter");
+    }
+
+    #onKeyDown(e)
+    {
+        this.#pressedKeys[e.key.toLowerCase()] = true;
+        this.#lastKeyDown = e.key.toLowerCase();
+    }
+    #onKeyUp(e)
+    {
+        this.#pressedKeys[e.key.toLowerCase()] = false;
+        this.#lastKeyUp = e.key;
+    }
+    #onBlur(e)
+    {
+        this.#pressedKeys = {};
     }
 
     setTarget(element)
     {
-        if (this.#element != null)
-        {
-            this.#element.onkeydown = () => { };
-            this.#element.onkeyup = () => { };
-            this.#element.blur = () => { };
-            this.#element = null;
-        }
+        this.destroy();
 
         if (element instanceof Canvas) element = element.getHTMLCanvas();
         if (element instanceof Element)
         {
-            let self = this;
-            element.onkeydown = function (e)
-            {
-                self.#pressedKeys2[e.key.toLowerCase()] = true;
-                self.#lastKeyDown2 = e.key.toLowerCase();
-            };
-            element.onkeyup = function (e)
-            {
-                self.#pressedKeys2[e.key.toLowerCase()] = false;
-                self.#lastKeyUp2 = e.key;
-            };
-            element.onblur = function (e)
-            {
-                self.#pressedKeys2 = {};
-            };
+            this.#downHandler = this.#onKeyDown.bind(this);
+            this.#upHandler = this.#onKeyUp.bind(this);
+            this.#blurHandler = this.#onBlur.bind(this);
+
+            element.addEventListener('keydown', this.#downHandler);
+            element.addEventListener("keyup", this.#upHandler);
+            element.addEventListener("blur", this.#blurHandler);
+
             this.#element = element;
         }
-        else console.warn("This Keyboard instance is not linked to an HTML element");
+        else console.warn("This Keyboard instance is not linked to a HTML element");
     }
 
     isKeyDown(key)
     {
-        return this.#pressedKeys2[key.toLowerCase()];
+        return this.#pressedKeys[key.toLowerCase()];
     }
 
     getLastKeyDown()
     {
-        return this.#lastKeyDown2;
+        return this.#lastKeyDown;
     }
 
     getLastKeyPressed()
     {
-        return this.#lastKeyUp2;
+        return this.#lastKeyUp;
+    }
+
+    destroy()
+    {
+        if (this.#element != null)
+        {
+            this.#element.removeEventListener('keydown', this.#downHandler);
+            this.#element.removeEventListener("keyup", this.#upHandler);
+            this.#element.removeEventListener("blur", this.#blurHandler);
+            this.#element = null;
+        }
     }
 }
 
@@ -532,7 +560,11 @@ class Keyboard
 
 class Mouse
 {
-    static #state = {
+    // Static Mouse - Looks for mouse information in the entire window
+
+    static #isEnabled = false;
+
+    static #globalState = {
         position: {
             x: null,
             y: null
@@ -549,85 +581,95 @@ class Mouse
         }
     };
 
-    static #interval = 50;
-    static #lastCall = 0;
+    static #globalInterval = 50;
+    static #globalLastCall = Date.now();
 
-    static #staticConstructor = (() =>
+    static #globalMoveHandler;
+    static #globalButtonHandler;
+
+    static #onGlobalMouseMove(e)
     {
-        window.onmousemove = function (e)
+        if (Date.now() - Mouse.#globalLastCall > Mouse.#globalInterval)
         {
-            if (Date.now() - Mouse.#lastCall > Mouse.#interval)
-            {
-                Mouse.#state.position = {
-                    x: e.clientX,
-                    y: e.clientY
-                };
-                Mouse.#state.change = { x: e.movementX, y: e.movementY };
-                Mouse.#lastCall = Date.now();
-            }
+            Mouse.#globalState.position = {
+                x: e.clientX,
+                y: e.clientY
+            };
+            Mouse.#globalState.change = { x: e.movementX, y: e.movementY };
+            Mouse.#globalLastCall = Date.now();
         }
-
-        function updateButtons(e)
-        {
-            let arr = [0, 0, 0, 0];
-            let buttons = e.buttons;
-            let index = 3;
-            for (let i = 16; i >= 1; i /= 2)
-            {
-                if (buttons - i >= 0) 
-                {
-                    arr[index]++;
-                    buttons -= i;
-                }
-                if (i != 16) index--;
-            }
-            Mouse.#state.button.left = Boolean(arr[0]);
-            Mouse.#state.button.right = Boolean(arr[1]);
-            Mouse.#state.button.middle = Boolean(arr[2]);
-            Mouse.#state.button.other = Boolean(arr[3]);
-        }
-        window.onmousedown = updateButtons;
-        window.onmouseup = updateButtons;
-    })();
-
-    static getPosition(canvas)
+    }
+    static #onGlobalUpdateButton(e)
     {
-        if (canvas instanceof Canvas)
+        let arr = [0, 0, 0, 0];
+        let buttons = e.buttons;
+        let index = 3;
+        for (let i = 16; i >= 1; i /= 2)
         {
-            let HTMLCanvas = canvas.getHTMLCanvas();
-            var rect = HTMLCanvas.getBoundingClientRect();
-
-            let x = Math.round((Mouse.#state.position.x - rect.left) / (rect.right - rect.left) * HTMLCanvas.width);
-            let y = Math.round((Mouse.#state.position.y - rect.top) / (rect.bottom - rect.top) * HTMLCanvas.height);
-
-            return { x: x, y: y };
+            if (buttons - i >= 0) 
+            {
+                arr[index]++;
+                buttons -= i;
+            }
+            if (i != 16) index--;
         }
-        else return Mouse.#state.position;
+        Mouse.#globalState.button.left = Boolean(arr[0]);
+        Mouse.#globalState.button.right = Boolean(arr[1]);
+        Mouse.#globalState.button.middle = Boolean(arr[2]);
+        Mouse.#globalState.button.other = Boolean(arr[3]);
+    }
+
+    static #init()
+    {
+        if (!this.#isEnabled)
+        {
+            Mouse.#globalMoveHandler = Mouse.#onGlobalMouseMove.bind(this);
+            Mouse.#globalButtonHandler = Mouse.#onGlobalUpdateButton.bind(this);
+
+            window.addEventListener('mousemove', Mouse.#globalMoveHandler);
+            window.addEventListener("mousedown", Mouse.#globalButtonHandler);
+            window.addEventListener("mouseup", Mouse.#globalButtonHandler);
+
+            this.#isEnabled = true;
+        }
+    }
+
+    static getPosition()
+    {
+        Mouse.#init();
+        return Mouse.#globalState.position;
     }
 
     static getButtons()
     {
-        return Mouse.#state.button;
+        Mouse.#init();
+        return Mouse.#globalState.button;
     }
 
     static getChange()
     {
-        return Mouse.#state.change;
+        Mouse.#init();
+        return Mouse.#globalState.change;
     }
 
     static getState()
     {
-        return Mouse.#state;
+        Mouse.#init();
+        return Mouse.#globalState;
     }
 
-    static setCallsPerSecond(number)
+    static setUpdatesPerSecond(number)
     {
-        Mouse.#interval = 1000.0 / number;
+        Mouse.#init();
+        Mouse.#globalInterval = 1000.0 / number;
     }
 
 
 
-    #state2 = {
+
+    // Non-Static Mouse - Looks for mouse information within a paticular element
+
+    #state = {
         position: {
             x: null,
             y: null
@@ -644,91 +686,230 @@ class Mouse
         }
     };
 
-    #interval2 = 50;
-    #lastCall2 = 0;
+    #interval = 50;
+    #lastCall = 0;
     #element;
 
-    constructor(element)
+    #moveHandler;
+    #buttonHandler;
+
+    constructor(HTML_element)
     {
-        if (arguments.length > 0) this.setTarget(element);
+        if (arguments.length > 0) this.setTarget(HTML_element);
         else console.warn("This Mouse instance is missing a HTML element parameter");
+    }
+
+    #onMouseMove(e)
+    {
+        if (Date.now() - this.#lastCall > this.#interval)
+        {
+            // Get the bounding rectangle of target
+            let rect = this.#element.getBoundingClientRect();
+
+            this.#state.position = {
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top
+            };
+            this.#state.change = { x: e.movementX, y: e.movementY };
+            this.#lastCall = Date.now();
+        }
+    }
+    #onUpdateButton(e)
+    {
+        let arr = [0, 0, 0, 0];
+        let buttons = e.buttons;
+        let index = 3;
+        for (let i = 16; i >= 1; i /= 2)
+        {
+            if (buttons - i >= 0) 
+            {
+                arr[index]++;
+                buttons -= i;
+            }
+            if (i != 16) index--;
+        }
+        this.#state.button.left = Boolean(arr[0]);
+        this.#state.button.right = Boolean(arr[1]);
+        this.#state.button.middle = Boolean(arr[2]);
+        this.#state.button.other = Boolean(arr[3]);
     }
 
     setTarget(element)
     {
-        if (this.#element != null)
-        {
-            // this.#element.onmousemove = () => { };
-            // this.#element.onmousedown = () => { };
-            // this.#element.onmouseup = () => { };
-            this.#element = null;
-        }
+        this.destroy();
 
         if (element instanceof Canvas) element = element.getHTMLCanvas();
         if (element instanceof Element)
         {
-            let self = this;
+            this.#moveHandler = this.#onMouseMove.bind(this);
+            this.#buttonHandler = this.#onUpdateButton.bind(this);
 
-            function updateButtons(e)
-            {
-                let arr = [0, 0, 0, 0];
-                let buttons = e.buttons;
-                let index = 3;
-                for (let i = 16; i >= 1; i /= 2)
-                {
-                    if (buttons - i >= 0) 
-                    {
-                        arr[index]++;
-                        buttons -= i;
-                    }
-                    if (i != 16) index--;
-                }
-                self.#state2.button.left = Boolean(arr[0]);
-                self.#state2.button.right = Boolean(arr[1]);
-                self.#state2.button.middle = Boolean(arr[2]);
-                self.#state2.button.other = Boolean(arr[3]);
-            }
-            element.addEventListener("mousedown", updateButtons);
-            element.addEventListener("mouseup", updateButtons);
+            element.addEventListener('mousemove', this.#moveHandler);
+            element.addEventListener("mousedown", this.#buttonHandler);
+            element.addEventListener("mouseup", this.#buttonHandler);
 
             this.#element = element;
         }
-        else console.warn("This Mouse instance is not linked to an HTML element");
+        else console.warn("This Mouse instance is not linked to a HTML element");
     }
-    
+
     getPosition()
     {
-        if (this.#element instanceof Element)
-        {
-            var rect = this.#element.getBoundingClientRect();
-
-            let x = Math.round((Mouse.#state.position.x - rect.left) / (rect.right - rect.left) * this.#element.width);
-            let y = Math.round((Mouse.#state.position.y - rect.top) / (rect.bottom - rect.top) * this.#element.height);
-
-            return { x: x, y: y };
-        }
-        else return Mouse.#state.position;
+        return this.#state.position;
     }
 
     getButtons()
     {
-        return this.#state2.button;
+        return this.#state.button;
     }
 
     getChange()
     {
-        return this.#state2.change;
+        return this.#state.change;
     }
 
     getState()
     {
-        this.#state2.position = this.getPosition();
-        return this.#state2;
+        return this.#state;
     }
 
     setCallsPerSecond(number)
     {
-        this.#interval2 = 1000.0 / number;
+        this.#interval = 1000.0 / number;
+    }
+
+    destroy()
+    {
+        if (this.#element != null)
+        {
+            this.#element.removeEventListener('mousemove', this.#moveHandler);
+            this.#element.removeEventListener("mousedown", this.#buttonHandler);
+            this.#element.removeEventListener("mouseup", this.#buttonHandler);
+            this.#element = null;
+        }
+    }
+}
+
+
+
+class Touchscreen
+{
+    // Static Touch - Looks for mouse information in the entire window
+
+    static #isEnabled = false;
+
+    static #globalState = {
+        isTouch: false,
+        position: {
+            x: null,
+            y: null
+        },
+        change: {
+            x: null,
+            y: null
+        }
+    };
+
+    static #globalStartHandler;
+    static #globalEndHandler;
+    static #globalMoveHandler;
+
+    static #onGlobalTouchStart(evt)
+    {
+        let e = evt.changedTouches[0];
+
+        let x = e.clientX;
+        let y = e.clientY;
+        if (x <= 0) x = 0;
+        if (y <= 0) y = 0;
+        
+        Touchscreen.#globalState.isTouch = true;
+        Touchscreen.#globalState.change = {
+            x: x - Touchscreen.#globalState.position.x,
+            y: y - Touchscreen.#globalState.position.y
+        };
+        Touchscreen.#globalState.position = {
+            x: x,
+            y: y
+        };
+    }
+    static #onGlobalTouchEnd(evt)
+    {
+        let e = evt.changedTouches[0];
+
+        let x = e.clientX;
+        let y = e.clientY;
+        if (x <= 0) x = 0;
+        if (y <= 0) y = 0;
+
+        Touchscreen.#globalState.isTouch = false;
+        Touchscreen.#globalState.change = {
+            x: x - Touchscreen.#globalState.position.x,
+            y: y - Touchscreen.#globalState.position.y
+        };
+        Touchscreen.#globalState.position = {
+            x: x,
+            y: y
+        };
+    }
+    static #onGlobalTouchMove(evt)
+    {
+        let e = evt.changedTouches[0];
+
+        let x = e.clientX;
+        let y = e.clientY;
+        if (x <= 0) x = 0;
+        if (y <= 0) y = 0;
+
+        Touchscreen.#globalState.isTouch = true;
+        Touchscreen.#globalState.change = {
+            x: x - Touchscreen.#globalState.position.x,
+            y: y - Touchscreen.#globalState.position.y
+        };
+        Touchscreen.#globalState.position = {
+            x: x,
+            y: y
+        };
+    }
+
+    static #init()
+    {
+        if (!this.#isEnabled)
+        {
+            Touchscreen.#globalStartHandler = Touchscreen.#onGlobalTouchStart.bind(this);
+            Touchscreen.#globalEndHandler = Touchscreen.#onGlobalTouchEnd.bind(this);
+            Touchscreen.#globalMoveHandler = Touchscreen.#onGlobalTouchMove.bind(this);
+
+            window.addEventListener('touchstart', Touchscreen.#globalStartHandler);
+            window.addEventListener("touchend", Touchscreen.#globalEndHandler);
+            window.addEventListener("touchmove", Touchscreen.#globalMoveHandler);
+
+            this.#isEnabled = true;
+        }
+    }
+
+    static getPosition()
+    {
+        Touchscreen.#init();
+        return { x: Touchscreen.#globalState.position.x, y: Touchscreen.#globalState.position.y };
+    }
+
+    static isTouching()
+    {
+        Touchscreen.#init();
+        return Touchscreen.#globalState.isTouch;
+    }
+
+    static getChange()
+    {
+        Touchscreen.#init();
+        return { x: Touchscreen.#globalState.change.x, y: Touchscreen.#globalState.change.y };
+    }
+
+    static getState()
+    {
+        Touchscreen.#init();
+        return JSON.parse(JSON.stringify(Touchscreen.#globalState));
     }
 }
 
@@ -1758,7 +1939,7 @@ class DisplayText
     }
 }
 
-export { Canvas, Events, Camera, Util };
+export { Canvas, Input, Camera, Util };
 export { Line, Polygon, Rectangle, Circle, Sprite };
 export { DisplayText, Texture };
-export { Keyboard, Mouse };
+export { Keyboard, Mouse, Touchscreen };
