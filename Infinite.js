@@ -1,19 +1,20 @@
 // TODO list
 // -------------------------------------------------------------------
-// Current Fixing scaling and reworking all shape based classes
+// Current - Reworking polygon class again for more intuitive transformations, scaling and dimensions
 
 // Current Refactor everything specifically; class constructors should be
 //         given proper error detection for their argument list
 //       - DONE Canvas constructor
 //       - TODO Everything else
 
+// TODO Add JSDoc comments to document and improve code readability
 // TODO Create way to map touch controls to KBMS so code can be
 //      written once and made cross platform easily 
 // TODO Improve/Finish touch events/controls in Events class - current
 //      support is very basic
 // TODO Add touch joysticks for touch game support
 // TODO Flesh out Util class with more backend functions
-// TODO Rewrite/add more feature to the DisplayText class
+// TODO Rewrite/add more features to the DisplayText class
 // TODO Move isConvexPoly out of intersects and run it after shape is
 //      modified to reduce calls
 // TODO Look through code for ways to improve performance
@@ -23,7 +24,7 @@
 // TODO There could be problems with shape center points and their shapes
 //      intersects (Circle class). Might seperate the center property into
 //      independent rotation and center points
-// TODO Split Infinite.js into multiple files to improve readability
+// TODO Split Infinite.js into multiple files to improve readability & modularity
 
 // MAYBE Add integrated network support using websockets or socket.io
 // MAYBE Use OffscreenCanvas to offload rendering to worker thread for performance
@@ -297,7 +298,6 @@ class Canvas
 }
 
 
-
 class Input 
 {
     /** create(name, func) allows you to create/store crossplatform conditional statements that
@@ -314,8 +314,6 @@ class Input
         }
     }
 }
-
-
 
 
 class Keyboard
@@ -461,7 +459,6 @@ class Keyboard
         }
     }
 }
-
 
 
 class Mouse
@@ -697,7 +694,6 @@ class Mouse
 }
 
 
-
 class Touchscreen
 {
     // Static Touch - Looks for mouse information in the entire window
@@ -728,7 +724,7 @@ class Touchscreen
         let y = e.clientY;
         if (x <= 0) x = 0;
         if (y <= 0) y = 0;
-        
+
         Touchscreen.#globalState.isTouch = true;
         Touchscreen.#globalState.change = {
             x: x - Touchscreen.#globalState.position.x,
@@ -820,7 +816,6 @@ class Touchscreen
 }
 
 
-
 class Camera
 {
     #width; #height;
@@ -883,7 +878,6 @@ class Camera
         return this.#rotation;
     }
 }
-
 
 
 class Util
@@ -995,7 +989,6 @@ class Util
 }
 
 
-
 // Drawables
 class Shape
 {
@@ -1009,7 +1002,12 @@ class Shape
         this._rotation = 0;
         this._scale = { x: 1.0, y: 1.0 };
         this._center = { x: 0, y: 0 };
-        this._dimensions = { x: 0, y: 0 };
+        this._dimensions = {
+            minX: 0,
+            maxX: 0,
+            minY: 0,
+            maxY: 0,
+        };
     }
 
     setPosition(x, y)
@@ -1043,9 +1041,9 @@ class Shape
         this._rotation = (this._rotation + degrees) % 360;
     }
 
-    move(distance = 1, angle = 0)
+    move(distance = 1, angle = this.getRotation())
     {
-        let rads = ((this.getRotation() + angle) % 360) * (Math.PI / 180);
+        let rads = (angle % 360) * (Math.PI / 180);
         this.x += Math.round(distance * Math.sin(rads));
         this.y -= Math.round(distance * Math.cos(rads));
     }
@@ -1083,6 +1081,7 @@ class Shape
         return { x: this._scale.x, y: this._scale.y };
     }
 
+    // TODO Maybe change this._center to be between 0.0 and 1.0
     setCenter(x, y)
     {
         if (arguments.length > 1)
@@ -1099,9 +1098,29 @@ class Shape
 
     getSize()
     {
-        return { x: this._dimensions.x, y: this._dimensions.y };
+        return { x: this._dimensions.maxX - this._dimensions.minX, y: this._dimensions.maxY - this._dimensions.minY };
     }
 
+    getWidth()
+    {
+        return this._dimensions.maxX - this._dimensions.minX;
+    }
+
+    getHeight()
+    {
+        return this._dimensions.maxY - this._dimensions.minY;
+    }
+
+    resetTransforms()
+    {
+        this._scale = 1;
+        this._rotation = 0;
+    }
+
+    /** This method with no arguments will return a deep copy of the shape.
+     * 
+     *  If it has a shape argument it will convert the shape into a replica of the argument shape 
+     */
     clone(shape)
     {
         if (arguments.length == 0)
@@ -1124,7 +1143,6 @@ class Shape
         else return null;
     }
 }
-
 
 
 class Line
@@ -1194,14 +1212,13 @@ class Line
     draw(ctx)
     {
         ctx.beginPath();
-        ctx.lineWidth = this.width;
+        ctx.lineWidth = 1;
         ctx.strokeStyle = this.colour;
         ctx.moveTo(this.x1, this.y1);
         ctx.lineTo(this.x2, this.y2);
         ctx.stroke();
     }
 }
-
 
 
 class Polygon extends Shape
@@ -1512,7 +1529,6 @@ class Rectangle extends Polygon
 }
 
 
-
 class Circle extends Shape
 {
     constructor(radius, x, y)
@@ -1587,7 +1603,6 @@ class Circle extends Shape
         context.fill();
     }
 }
-
 
 
 class Texture
@@ -1677,7 +1692,6 @@ class Texture
         }
     }
 }
-
 
 
 class Sprite extends Shape
@@ -1817,7 +1831,6 @@ class Sprite extends Shape
 }
 
 
-
 class DisplayText
 {
     constructor()
@@ -1845,7 +1858,24 @@ class DisplayText
     }
 }
 
-export { Canvas, Input, Camera, Util };
-export { Line, Polygon, Rectangle, Circle, Sprite };
+// TODO Re-add this into canvas class somehow
+// if (options['debug'])
+// {
+//     window.onerror = function (msg, url, linenumber)
+//     {
+//         alert('Error: ' + msg + '\nFile: ' + url.split('/')[url.split('/').length - 1] + '\nLine: ' + linenumber);
+//         return true;
+//     };
+// }
+
+// Standard
+export { Canvas, Camera, Util };
+
+// Inputs
+export { Keyboard, Mouse, Touchscreen, Input };
+
+// Shapes
+export { Line, Polygon, Rectangle, Circle, Sprite, Shape };
+
+// Other
 export { DisplayText, Texture };
-export { Keyboard, Mouse, Touchscreen };
