@@ -21,10 +21,10 @@ ball.setRotation(90);
 
 // Bounce Walls
 var topWall = new Rectangle(canvas.width, 20);
+topWall.y = -20;
 
 var bottomWall = new Rectangle(canvas.width, 20);
 bottomWall.y = canvas.height;
-
 // Scores
 var s1 = new DisplayText(0);
 s1.colour = 'blue';

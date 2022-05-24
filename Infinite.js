@@ -1,6 +1,6 @@
 // TODO list
 // -------------------------------------------------------------------
-// Current - Reworking polygon class again for more intuitive transformations, scaling and dimensions
+// WARNING - Sprite class is currently broken and needs reworked for the new polygon class
 
 // Current Refactor everything specifically; class constructors should be
 //         given proper error detection for their argument list
@@ -41,6 +41,8 @@ document.getElementsByTagName("HEAD")[0].appendChild(styles);
 
 class Canvas
 {
+    static _containCanvas = document.createElement('canvas');
+    static _containContext = Canvas._containCanvas.getContext("2d");
     #id;
     #num;
     #infinite;
@@ -931,8 +933,9 @@ class Util
         let arr = [];
         for (let i = 0; i < objArr.length; i++)
         {
-            arr.push(objArr[i].x);
-            arr.push(objArr[i].y);
+            let temp = objArr[i]();
+            arr.push(temp.x);
+            arr.push(temp.y);
         }
         return arr;
     }
@@ -943,7 +946,7 @@ class Util
         for (var i = 2; i < points.length; i++)
         {
             // Calculate crossproduct from 3 consecutive points
-            var crossproduct = Util.calculateCrossProduct(points[i - 2], points[i - 1], points[i]);
+            var crossproduct = Util.calculateCrossProduct(points[i - 2](), points[i - 1](), points[i]());
             var currentSign = Math.sign(crossproduct);
             if (lastSign == null)
             {
@@ -960,7 +963,7 @@ class Util
         }
 
         // First point must check between second and last point, this is the last 3 points that can break convexity
-        var crossproductFirstPoint = Util.calculateCrossProduct(points[points.length - 2], points[0], points[1]);
+        var crossproductFirstPoint = Util.calculateCrossProduct(points[points.length - 2](), points[0](), points[1]());
 
         // I changed this because when a straight line had 3 points in it instead of the typical 2 it would return not a convex polygon
         return lastSign >= 0 && Math.sign(crossproductFirstPoint) >= 0;
@@ -992,23 +995,46 @@ class Util
 // Drawables
 class Shape
 {
+    _dimensions = {
+        local: {
+            minX: 0,
+            maxX: 0,
+            minY: 0,
+            maxY: 0
+        },
+        global: {
+            minX: 0,
+            maxX: 0,
+            minY: 0,
+            maxY: 0
+        }
+    };
+
     constructor()
     {
         this.x = 0;
         this.y = 0;
+        this._lastX = 0;
+        this._lastY = 0;
 
         this.colour = "black";
 
         this._rotation = 0;
         this._scale = { x: 1.0, y: 1.0 };
         this._origin = { x: 0, y: 0 };
-        this._dimensions = {
-            minX: 0,
-            maxX: 0,
-            minY: 0,
-            maxY: 0,
-        };
         this._isTransform = false;
+
+        this.path = new Path2D();
+    }
+
+    onTransform()
+    {
+        this._isTransform = true;
+    }
+
+    contains(point)
+    {
+        return Canvas._containContext.isPointInPath(this.path, point.x, point.y);
     }
 
     setPosition(x, y)
@@ -1031,7 +1057,7 @@ class Shape
         if (Canvas.debug && degrees == this.getRotation()) console.warn(new Error("setRotation() not changed"));
 
         this._rotation = degrees % 360;
-        this._isTransform = true;
+        this.onTransform();
     }
 
     getRotation()
@@ -1042,7 +1068,7 @@ class Shape
     rotate(degrees = 0)
     {
         this._rotation = (this._rotation + degrees) % 360;
-        this._isTransform = true;
+        this.onTransform();
     }
 
     move(distance = 1, angle = this.getRotation())
@@ -1058,13 +1084,13 @@ class Shape
         {
             this._scale.x = Math.min(this._scale.x * scaleX, 1000000);
             this._scale.y = Math.min(this._scale.y * scaleY, 1000000);
-            this._isTransform = true;
+            this.onTransform();
         }
         else if (arguments.length == 1)
         {
             this._scale.x = Math.min(this._scale.x * scaleX, 1000000);
             this._scale.y = Math.min(this._scale.y * scaleX, 1000000);
-            this._isTransform = true;
+            this.onTransform();
         }
         else if (Canvas.debug) console.warn(new Error("scale missing arguments"));
     }
@@ -1075,12 +1101,12 @@ class Shape
         {
 
             this._scale = { x: Math.min(scaleX, 1000000), y: Math.min(scaleY, 1000000) };
-            this._isTransform = true;
+            this.onTransform();
         }
         else if (arguments.length == 1)
         {
             this._scale = { x: Math.min(scaleX, 1000000), y: Math.min(scaleX, 1000000) };
-            this._isTransform = true;
+            this.onTransform();
         }
         else if (Canvas.debug) console.warn(new Error("setScale missing arguments"));
     }
@@ -1090,35 +1116,54 @@ class Shape
         return { x: this._scale.x, y: this._scale.y };
     }
 
-    // TODO Maybe change this._origin to be between 0.0 and 1.0
     setOrigin(x, y)
     {
         if (arguments.length > 1)
         {
             this._origin = { x: x, y: y };
-            this._isTransform = true;
+            this.onTransform();
         }
         else if (Canvas.debug) console.warn(new Error("setCenter missing arguments"));
     }
 
     getOrigin()
     {
-        return { x: this._origin.x + this.x, y: this._origin.y + this.y };
+        return { x: this._origin.x, y: this._origin.y };
     }
 
-    getSize()
+    getSize(global = true)
     {
-        return { x: this._dimensions.maxX - this._dimensions.minX, y: this._dimensions.maxY - this._dimensions.minY };
+        if (global) return { width: this._dimensions.global.maxX - this._dimensions.global.minX, height: this._dimensions.global.maxY - this._dimensions.global.minY };
+        else return { width: this._dimensions.local.maxX - this._dimensions.local.minX, height: this._dimensions.local.maxY - this._dimensions.local.minY };
     }
 
-    getWidth()
+    getWidth(global = true)
     {
-        return this._dimensions.maxX - this._dimensions.minX;
+        return this.getSize(global).width;
     }
 
-    getHeight()
+    getHeight(global = true)
     {
-        return this._dimensions.maxY - this._dimensions.minY;
+        return this.getSize(global).height;
+    }
+
+    draw()
+    {
+        this._lastX = this.x;
+        this._lastY = this.y;
+    }
+
+    hasMoved()
+    {
+        return !(this._lastX == this.x && this._lastY == this.y);
+    }
+
+    resetTransforms()
+    {
+        this._origin = { x: 0, y: 0 };
+        this._rotation = 0;
+        this._scale = { x: 1, y: 1 };
+        this.onTransform();
     }
 
     /** This method with no arguments will return a deep copy of the shape.
@@ -1130,17 +1175,19 @@ class Shape
         if (arguments.length == 0)
         {
             let temp = new Shape();
-            temp._dimensions = this.getSize();
+            temp._dimensions = JSON.parse(JSON.stringify(this._dimensions));
             temp._rotation = this.getRotation();
             temp._scale = this.getScale();
+            temp._origin = this.getOrigin();
             temp.x = this.x; temp.y = this.y;
             return temp;
         }
         else if (shape instanceof Shape)
         {
-            this._dimensions = shape.getSize();
+            this._dimensions = JSON.parse(JSON.stringify(shape._dimensions));
             this._rotation = shape.getRotation();
             this._scale = shape.getScale();
+            this._origin = shape.getOrigin();
             this.x = shape.x; this.y = shape.y;
             return true;
         }
@@ -1166,7 +1213,7 @@ class Line
 
         if (shape instanceof Polygon)
         {
-            if (Util.isPolygonConvex(shape._points))
+            if (shape.isConvex())
             {
                 return Intersects.linePolygon(this.x1, this.y1, this.x2, this.y2, Util.objArrayToArray(shape._points), 0.0001);
             }
@@ -1239,49 +1286,79 @@ class Polygon extends Shape
         this.x = x;
         this.y = y;
         this.setPoints(json);
+    }
 
-        this.canvas = document.createElement("canvas");
-        this.context = this.canvas.getContext("2d");
+    isTransform()
+    {
+        this._dimensions.global = {
+            minX: 0,
+            maxX: 0,
+            minY: 0,
+            maxY: 0
+        };
+
+        this._points.forEach((point, i) =>
+        {
+            let p = point();
+            if (p.x > this._dimensions.global.maxX) this._dimensions.global.maxX = p.x;
+            else if (p.x < this._dimensions.global.minX) this._dimensions.global.minX = p.x;
+            if (p.y > this._dimensions.global.maxY) this._dimensions.global.maxY = p.y;
+            else if (p.y < this._dimensions.global.minY) this._dimensions.global.minY = p.y;
+
+            if (i != 0) this.path.lineTo(p.x, p.y);
+            else 
+            {
+                this.path = new Path2D();
+                this.path.moveTo(p.x, p.y);
+            }
+        });
+        this._isTransform = false;
     }
 
     setPoints(json)
     {
         if (Array.isArray(json) && json.length > 2 && json[0].x != undefined && json[0].y != undefined)
         {
-            this._rotation = 0;
-            this._scale = { x: 1, y: 1 };
-
             this._json = JSON.parse(JSON.stringify(json));
             this._points = JSON.parse(JSON.stringify(json));
 
-            this._dimensions.minX = this._points[0].x;
-            this._dimensions.maxX = this._points[0].x;
-            this._dimensions.minY = this._points[0].y;
-            this._dimensions.maxY = this._points[0].y;
-
-            this._points.forEach((point, i) =>
-            {
-                if (point.x > this._dimensions.maxX) this._dimensions.maxX = point.x;
-                else if (point.x < this._dimensions.minX) this._dimensions.minX = point.x;
-                if (point.y > this._dimensions.maxY) this._dimensions.maxY = point.y;
-                else if (point.y < this._dimensions.minY) this._dimensions.minY = point.y;
-                
-                if (i < this._points.length - 1)
-                {
-                    this._lines.push(() => { return [point, this._points[i + 1]]; });
-                }
-            });
-            this._lines.push(() => { return [this._points[this._points.length - 1], this._points[0]]; });
-
-
-            this.#convex = Util.isPolygonConvex(this._points);
+            this._dimensions.local.minX = this._json[0].x;
+            this._dimensions.local.maxX = this._json[0].x;
+            this._dimensions.local.minY = this._json[0].y;
+            this._dimensions.local.maxY = this._json[0].y;
 
             this.path = new Path2D();
-            this.path.moveTo(this.x + this._points[0].x, this.y + this._points[0].y);
+            this._points = this._points.map((point, i) =>
+            {
+                if (point.x > this._dimensions.local.maxX) this._dimensions.local.maxX = point.x;
+                else if (point.x < this._dimensions.local.minX) this._dimensions.local.minX = point.x;
+                if (point.y > this._dimensions.local.maxY) this._dimensions.local.maxY = point.y;
+                else if (point.y < this._dimensions.local.minY) this._dimensions.local.minY = point.y;
+
+                return () =>
+                {
+                    return this.#rotatePoint(
+                        {
+                            x: this.x + (point.x * this._scale.x) - this._origin.x,
+                            y: this.y + (point.y * this._scale.y) - this._origin.y
+                        });
+                };
+            });
+
             this._points.forEach((point, i) =>
             {
-                if (i != 0) this.path.lineTo(this.x + point.x, this.y + point.y);
-            });
+                if (i < this._points.length - 1)
+                {
+                    this._lines.push(() => { return [point(), this._points[i + 1]()]; });
+                }
+
+                if (i != 0) this.path.lineTo(point().x, point().y);
+                else this.path.moveTo(this.x + point().x, this.y + point().y);
+            })
+            this._lines.push(() => { return [this._points[this._points.length - 1](), this._points[0]()]; });
+
+            this._dimensions.global = JSON.parse(JSON.stringify(this._dimensions.local));
+            this.#convex = Util.isPolygonConvex(this._points);
 
             return true;
         }
@@ -1307,11 +1384,6 @@ class Polygon extends Shape
         else return pt;
     }
 
-    contains(point)
-    {
-        return this.context.isPointInPath(this.path, point.x, point.y);
-    }
-
     intersects(shape)
     {
         if (shape instanceof Sprite) 
@@ -1321,13 +1393,13 @@ class Polygon extends Shape
 
         if (shape instanceof Polygon)
         {
-            if (Util.isPolygonConvex(this._points) && Util.isPolygonConvex(shape._points))
+            if (this.isConvex() && shape.isConvex())
             {
                 return Intersects.polygonPolygon(Util.objArrayToArray(this._points), Util.objArrayToArray(shape._points));
             }
             else
             {
-                if (shape.contains(this._points[0]) || this.contains(shape._points[0])) return true;
+                if (shape.contains(this._points[0]()) || this.contains(shape._points[0]())) return true;
                 for (let i = 0; i < this._lines.length; i++)
                 {
                     for (let j = 0; j < shape._lines.length; j++)
@@ -1348,13 +1420,13 @@ class Polygon extends Shape
         }
         else if (shape instanceof Circle)
         {
-            if (Util.isPolygonConvex(this._points))
+            if (this.isConvex())
             {
                 return Intersects.polygonCircle(Util.objArrayToArray(this._points), shape.x + shape.radius, shape.y + shape.radius, shape.radius, 0.0001);
             }
             else
             {
-                if (shape.contains(this._points[0]) || this.contains(shape.getOrigin())) return true;
+                if (shape.contains(this._points[0]()) || this.contains(shape.getOrigin())) return true;
                 for (let i = 0; i < this._lines.length; i++)
                 {
                     let p1 = this._lines[i]()[0];
@@ -1366,7 +1438,7 @@ class Polygon extends Shape
         }
         else if (shape instanceof Line)
         {
-            if (Util.isPolygonConvex(this._points))
+            if (this.isConvex())
             {
                 return Intersects.polygonLine(Util.objArrayToArray(this._points), shape.x1, shape.y1, shape.x2, shape.y2, 0.0001);
             }
@@ -1388,6 +1460,12 @@ class Polygon extends Shape
         return null;
     }
 
+    getSize(global = true)
+    {
+        if (global) return { width: this._dimensions.global.maxX - this._dimensions.global.minX, height: this._dimensions.global.maxY - this._dimensions.global.minY };
+        else return { width: this._dimensions.local.maxX - this._dimensions.local.minX, height: this._dimensions.local.maxY - this._dimensions.local.minY };
+    }
+
     isConvex()
     {
         return this.#convex;
@@ -1397,30 +1475,9 @@ class Polygon extends Shape
     {
         ctx.beginPath();
         ctx.fillStyle = this.colour;
-        
 
-        if (true)
-        {
-            this._json.forEach((point, i) =>
-            {
-                let p = { x: 0, y: 0 };
-                p.x = point.x - this._origin.x + this.x;
-                p.y = point.y - this._origin.y + this.y;
-
-                p.x *= this._scale.x;
-                p.y *= this._scale.y;
-
-                this._points[i] = this.#rotatePoint(p);
-            });
-            this._isTransform = false;
-        }
-
-        this.path = new Path2D();
-        this.path.moveTo(this._points[0].x, this._points[0].y);
-        this._points.forEach((point, i) =>
-        {
-            if (i != 0) this.path.lineTo(point.x, point.y);
-        });
+        if (this._isTransform || this.hasMoved()) this.isTransform();
+        super.draw();
 
         if (this._points.length < 3) ctx.stroke(this.path);
         else ctx.fill(this.path);
@@ -1430,8 +1487,8 @@ class Polygon extends Shape
     {
         if (arguments.length == 0)
         {
-            let temp = new Polygon(JSON.parse(JSON.stringify(this.json)), this.x, this.y);
-            temp._dimensions = this.getSize();
+            let temp = new Polygon(JSON.parse(JSON.stringify(this._json)), this.x, this.y);
+            temp._dimensions = JSON.parse(JSON.stringify(this._dimensions));
             temp._rotation = this.getRotation();
             temp._scale = this.getScale();
             temp._origin = this.getOrigin();
@@ -1440,11 +1497,11 @@ class Polygon extends Shape
         }
         else if (shape instanceof Polygon)
         {
-            this.setPoints(JSON.parse(JSON.stringify(shape.json)));
-            this._dimensions = shape.getSize();
+            this.setPoints(JSON.parse(JSON.stringify(shape._json)));
+            this._dimensions = JSON.parse(JSON.stringify(shape._dimensions));
             this._rotation = shape.getRotation();
             this._scale = shape.getScale();
-            temp._origin = this.getOrigin();
+            this._origin = shape.getOrigin();
             this.x = shape.x; this.y = shape.y;
             return true;
         }
@@ -1457,19 +1514,13 @@ class Rectangle extends Polygon
 {
     #width = 0;
     #height = 0;
-    constructor(width, height, x, y)
+
+    constructor(width, height, x = 0, y = 0)
     {
-        super([{ x: 0, y: 0 }, { x: width, y: 0 }, { x: width, y: height }, { x: 0, y: height }]);
+        super([{ x: 0, y: 0 }, { x: width, y: 0 }, { x: width, y: height }, { x: 0, y: height }], x, y);
+
         this.#width = width;
         this.#height = height;
-        if (arguments.length == 4)
-        {
-            this.x = x;
-            this.y = y;
-        }
-
-        // this._origin.x = this.#width / 2;
-        // this._origin.y = this.#height / 2;
     }
 
     setSize(width, height)
@@ -1478,14 +1529,9 @@ class Rectangle extends Polygon
         {
             this.#width = width;
             this.#height = height;
-            this.setPoints([{ x: 0, y: 0 }, { x: this.#width, y: 0 }, { x: this.#width, y: this.#height }, { x: 0, y: this.#height }]);
+            this.setPoints([{ x: 0, y: 0 }, { x: width, y: 0 }, { x: width, y: height }, { x: 0, y: height }]);
         }
         else if (Canvas.debug) console.warn(new Error("setSize missing arguments"));
-    }
-
-    getSize()
-    {
-        return { width: this.#width, height: this.#height }
     }
 
     setWidth(width)
@@ -1508,18 +1554,37 @@ class Circle extends Shape
     {
         super();
         this.radius = radius;
-        this.setOrigin(radius, radius);
 
         if (arguments.length > 2)
         {
             this.x = x;
             this.y = y;
         }
+        this.path.arc(this.x + this.radius, this.y + this.radius, this.radius, 0, 2 * Math.PI);
     }
 
-    getBounds()
+    isTransform()
     {
-        return { top: this.y, right: this.x + this.radius * 2, bottom: this.y + this.radius * 2, left: this.x }
+        // TODO global should conatin proper min and max values
+        this._dimensions = {
+            global: {
+                minX: this.x,
+                maxX: this.x + this.radius * 2,
+                minY: this.y,
+                maxY: this.y + this.radius * 2
+            },
+            local: {
+                minX: 0,
+                maxX: this.radius * 2,
+                minY: 0,
+                maxY: this.radius * 2
+            }
+        };
+
+        this.path = new Path2D();
+        this.path.arc(this.x + this.radius, this.y + this.radius, this.radius, 0, 2 * Math.PI);
+
+        this._isTransform = false;
     }
 
     intersects(shape)
@@ -1528,13 +1593,13 @@ class Circle extends Shape
 
         if (shape instanceof Polygon)
         {
-            if (Util.isPolygonConvex(shape._points))
+            if (shape.isConvex())
             {
                 return Intersects.circlePolygon(this.x + this.radius, this.y + this.radius, this.radius, Util.objArrayToArray(shape._points));
             }
             else
             {
-                if (this.contains(shape._points[0]) || shape.contains(this.getOrigin)) return true;
+                if (this.contains(shape._points[0]()) || shape.contains(this.getOrigin())) return true;
                 for (let i = 0; i < shape._lines.length; i++)
                 {
                     let p1 = shape._lines[i]()[0];
@@ -1555,25 +1620,15 @@ class Circle extends Shape
         return null;
     }
 
-    contains(point)
+    draw(ctx)
     {
-        let context = document.getElementById('Infinite').getContext("2d");
-        context.save();
+        ctx.beginPath();
+        ctx.fillStyle = this.colour;
 
-        context.beginPath();
-        context.arc(this.x + this.radius, this.y + this.radius, this.radius, 0, 2 * Math.PI);
-        let val = context.isPointInPath(point.x, point.y);
+        if (this._isTransform || this.hasMoved()) this.isTransform();
+        super.draw();
 
-        context.restore();
-        return val;
-    }
-
-    draw(context)
-    {
-        context.fillStyle = this.colour;
-        context.beginPath();
-        context.arc(this.x + this.radius, this.y + this.radius, this.radius, 0, 2 * Math.PI);
-        context.fill();
+        ctx.fill(this.path);
     }
 }
 
@@ -1632,37 +1687,30 @@ class Texture
 
     getArea(shape)
     {
+        let canvas = document.createElement("canvas");
+        let context = canvas.getContext("2d");
+
         if (arguments.length == 0)
         {
-            let canvas = document.createElement("canvas");
-            let context = canvas.getContext("2d");
-
             canvas.width = this.#area.getWidth();
             canvas.height = this.#area.getHeight();
 
             context.translate(-this.#area.x, -this.#area.y);
             this.#area.colour = 'rgba(0,0,0,0)';
             this.#area.draw(context);
-            context.clip();
-            context.drawImage(this.#img, 0, 0);
-
-            return canvas;
         }
         else
         {
-            let canvas = document.createElement("canvas");
-            let context = canvas.getContext("2d");
-
             canvas.width = shape.getWidth();
             canvas.height = shape.getHeight();
 
             context.translate(-shape.x, -shape.y);
             shape.draw(context);
-            context.clip();
-            context.drawImage(this.#img, 0, 0);
-
-            return canvas;
         }
+        context.clip();
+        context.drawImage(this.#img, 0, 0);
+
+        return canvas;
     }
 }
 
