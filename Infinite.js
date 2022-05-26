@@ -843,18 +843,19 @@ class Camera
         this.#shape = shape;
     }
 
-    // TODO When redoing the shape and canvas scaling make sure it's implemented here if need be
     getPosition()
     {
+        // TODO Change the getWidth/Height() to use global=true instead can't because problem with global dimensions
         if (this.#shape != null) return {
-            x: this.#shape.x + this.#shape.getWidth() / 2 - this.#width / 2,
-            y: this.#shape.y + this.#shape.getHeight() / 2 - this.#height / 2
+            x: this.#shape.x + this.#shape.getWidth(false) / 2 - this.#width / 2,
+            y: this.#shape.y + this.#shape.getHeight(false) / 2 - this.#height / 2
         };
         return { x: this.#x, y: this.#y };
     }
 
     setSize(width, height)
     {
+        console.log(width, height)
         this.#width = width;
         this.#height = height;
     }
@@ -1275,6 +1276,7 @@ class Line
 class Polygon extends Shape
 {
     #convex;
+    texture;
 
     constructor(json = [], x = 0, y = 0)
     {
@@ -1353,7 +1355,7 @@ class Polygon extends Shape
                 }
 
                 if (i != 0) this.path.lineTo(point().x, point().y);
-                else this.path.moveTo(this.x + point().x, this.y + point().y);
+                else this.path.moveTo(point().x, point().y);
             })
             this._lines.push(() => { return [this._points[this._points.length - 1](), this._points[0]()]; });
 
@@ -1471,6 +1473,11 @@ class Polygon extends Shape
         return this.#convex;
     }
 
+    setTexture(texture)
+    {
+        this.texture = texture;
+    }
+
     draw(ctx)
     {
         ctx.beginPath();
@@ -1479,8 +1486,26 @@ class Polygon extends Shape
         if (this._isTransform || this.hasMoved()) this.isTransform();
         super.draw();
 
-        if (this._points.length < 3) ctx.stroke(this.path);
-        else ctx.fill(this.path);
+        this._points.forEach((point, i) =>
+        {
+            let p = point();
+            if (i != 0) this.path.lineTo(p.x, p.y);
+            else 
+            {
+                this.path = new Path2D();
+                this.path.moveTo(p.x, p.y);
+            }
+        });
+
+        if (this.texture)
+        {
+            // For testing hitbox
+            // ctx.fillStyle = "rgba(0,255,0,0.5)";
+            // ctx.fill(this.path);
+            ctx.drawImage(this.texture.render(), this.x, this.y);
+        }
+        else if (this._points.length > 2) ctx.fill(this.path);
+        else ctx.stroke(this.path);
     }
 
     clone(shape)
@@ -1550,6 +1575,8 @@ class Rectangle extends Polygon
 
 class Circle extends Shape
 {
+    texture;
+
     constructor(radius, x, y)
     {
         super();
@@ -1620,6 +1647,11 @@ class Circle extends Shape
         return null;
     }
 
+    setTexture(texture)
+    {
+        this.texture = texture;
+    }
+
     draw(ctx)
     {
         ctx.beginPath();
@@ -1628,28 +1660,42 @@ class Circle extends Shape
         if (this._isTransform || this.hasMoved()) this.isTransform();
         super.draw();
 
-        ctx.fill(this.path);
+        
+        if (this.texture)
+        {
+            // For testing hitbox
+            // ctx.fillStyle = "rgba(0,255,0,0.5)";
+            // ctx.fill(this.path);
+            ctx.drawImage(this.texture.render(), this.x, this.y);
+        }
+        else ctx.fill(this.path);
     }
 }
 
 
-class Texture
+class Texture extends Shape
 {
     #img = new Image();
     #area;
 
-    constructor(src)
+    constructor(src, area)
     {
+        super();
+        if (area instanceof Shape) this.#area = area;
+
         if (src instanceof String || typeof src == "string")
         {
             return (async () =>
             {
                 this.#img = await this.loadTexture(src);
+                if (!this.#area) this.#area = new Rectangle(this.#img.width, this.#img.height);
                 return this;
             })();
         }
         else if (src instanceof Image) this.#img = src;
         else if (src instanceof Texture) this.#img = src.getImage();
+
+        if (!this.#area) this.#area = new Rectangle(this.#img.width, this.#img.height);
     }
 
     loadTexture(src)
@@ -1685,36 +1731,87 @@ class Texture
         this.#area = shape;
     }
 
-    getArea(shape)
+    getArea()
     {
-        let canvas = document.createElement("canvas");
-        let context = canvas.getContext("2d");
+        return this.#area;
+    }
 
+    render(shape)
+    {
         if (arguments.length == 0)
         {
+            let canvas = document.createElement('canvas');
+            let ctx = canvas.getContext("2d");
+
             canvas.width = this.#area.getWidth();
             canvas.height = this.#area.getHeight();
 
-            context.translate(-this.#area.x, -this.#area.y);
-            this.#area.colour = 'rgba(0,0,0,0)';
-            this.#area.draw(context);
+            // For testing hitbox
+            // ctx.fillStyle = "rgba(255,0,0,0.5)";
+            // ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            this.#area._points.forEach((point, i) =>
+            {
+                let p = point();
+                // TODO Add this at some point right now it breaks everything
+                // if (p.x > this.#area._dimensions.global.maxX) this.#area._dimensions.global.maxX = p.x;
+                // else if (p.x < this.#area._dimensions.global.minX) this.#area._dimensions.global.minX = p.x;
+                // if (p.y > this.#area._dimensions.global.maxY) this.#area._dimensions.global.maxY = p.y;
+                // else if (p.y < this.#area._dimensions.global.minY) this.#area._dimensions.global.minY = p.y;
+
+                if (i != 0) this.#area.path.lineTo(p.x, p.y);
+                else 
+                {
+                    this.#area.path = new Path2D();
+                    this.#area.path.moveTo(p.x, p.y);
+                }
+            });
+
+            // Flipping textures and keeping positions
+            if (this._scale.x < 0) 
+            {
+                ctx.translate(-this.#area.getWidth() * this._scale.x, 0);
+                ctx.scale(-1, 1);
+            }
+            if (this._scale.y < 0) 
+            {
+                ctx.translate(0, -this.#area.getHeight() * this._scale.y);
+                ctx.scale(1, -1);
+            }
+            ctx.translate(-(this.x * (this._scale.x - 1)), -(this.y * (this._scale.y - 1)));
+
+            // Create clip for image at corner of canvas
+            ctx.translate(-this.#area.x, -this.#area.y);
+            ctx.clip(this.#area.path);
+
+            // Applies the users texture transforms
+            ctx.scale(Math.abs(this._scale.x), Math.abs(this._scale.y));
+            ctx.rotate(this._rotation);
+            ctx.translate(-this.x, -this.y);
+            ctx.drawImage(this.#img, 0, 0);
+
+            return canvas;
         }
         else
         {
+            let canvas = document.createElement("canvas");
+            let context = canvas.getContext("2d");
+
             canvas.width = shape.getWidth();
             canvas.height = shape.getHeight();
 
             context.translate(-shape.x, -shape.y);
             shape.draw(context);
-        }
-        context.clip();
-        context.drawImage(this.#img, 0, 0);
+            context.clip();
+            context.drawImage(this.#img, 0, 0);
 
-        return canvas;
+            return canvas;
+        }
     }
 }
 
 
+/** @deprecated */
 class Sprite extends Shape
 {
     #texture = new Texture();
@@ -1768,10 +1865,7 @@ class Sprite extends Shape
     {
         if (this.#area instanceof Polygon)
         {
-            let clone = new Polygon(this.#area.json, this.x, this.y);
-            clone._rotation = this._rotation;
-            clone._origin = this._origin;
-            clone._scale = this._scale;
+            let clone = this.#area.clone();
             return clone;
         }
         else if (this.#area instanceof Circle)
@@ -1812,42 +1906,41 @@ class Sprite extends Shape
         if (vertical) this._scale.y = -this._scale.y;
     }
 
-    draw(context)
+    draw(ctx)
     {
         this.#area.clone(this);
 
-        context.save();
+        ctx.save();
 
-        context.beginPath();
+        ctx.beginPath();
 
         // Sprite Rotation
         let o = {
             x: this.x + Math.abs(this.getWidth() * this._scale.x) / 2,
             y: this.y + Math.abs(this.getHeight() * this._scale.y) / 2
         };
-        context.translate(o.x, o.y);
-        context.rotate(this._rotation * Math.PI / 180);
-        context.translate(-o.x, -o.y);
+        ctx.translate(o.x, o.y);
+        ctx.rotate(this._rotation * Math.PI / 180);
+        ctx.translate(-o.x, -o.y);
 
         // Sprite Rotation
-        if (this._scale.x < 0) context.translate(-this.#area.getWidth() * this._scale.x, 0);
-        if (this._scale.y < 0) context.translate(0, -this.#area.getHeight() * this._scale.y);
-        context.translate(-(this.x * (this._scale.x - 1)), -(this.y * (this._scale.y - 1)));
-        context.scale(this._scale.x, this._scale.y);
+        if (this._scale.x < 0) ctx.translate(-this.#area.getWidth() * this._scale.x, 0);
+        if (this._scale.y < 0) ctx.translate(0, -this.#area.getHeight() * this._scale.y);
+        ctx.translate(-(this.x * (this._scale.x - 1)), -(this.y * (this._scale.y - 1)));
+        ctx.scale(this._scale.x, this._scale.y);
 
         if (this.#showHitbox) 
         {
-            context.drawImage(this.#texture.getArea(), this.x, this.y);
+            ctx.drawImage(this.#texture.getArea(), this.x, this.y);
         }
         else 
         {
             let temp = this.#area.colour;
             this.#area.colour = 'rgba(0, 0, 0, 0.0)';
-            context.drawImage(this.#texture.getArea(), this.x, this.y);
+            ctx.drawImage(this.#texture.getArea(), this.x, this.y);
             this.#area.colour = temp;
         }
-
-        context.restore();
+        ctx.restore();
     }
 }
 
