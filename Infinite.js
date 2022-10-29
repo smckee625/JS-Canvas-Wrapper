@@ -200,9 +200,10 @@ class Canvas
             this.#update();
         }
 
-        let delta = (performance.now() - this.#lastCallTime) / 1000;
+        let timeDif = performance.now() - this.#lastCallTime;
+        this.delta = timeDif / (1000.0 / 60.0);
         this.#lastCallTime = performance.now();
-        this.#fps = 1 / delta;
+        this.#fps = 1 / (timeDif / 1000);
     }
 
     stop()
@@ -880,6 +881,12 @@ class Camera
     {
         return this.#rotation;
     }
+
+    getBounds()
+    {
+        let pos = this.getPosition();
+        return { top: pos.y, right: pos.x + this.#width, bottom: pos.y + this.#width, left: pos.x };
+    }
 }
 
 
@@ -1045,6 +1052,11 @@ class Shape
             this.x = x;
             this.y = y;
         }
+        else if (typeof x === 'object')
+        {
+            this.x = x.x;
+            this.y = x.y;
+        }
         else if (Canvas.debug) console.warn("setPosition missing arguments");
     }
 
@@ -1075,8 +1087,8 @@ class Shape
     move(distance = 1, angle = this.getRotation())
     {
         let rads = (angle % 360) * (Math.PI / 180);
-        this.x += Math.round(distance * Math.sin(rads));
-        this.y -= Math.round(distance * Math.cos(rads));
+        this.x += (distance * Math.sin(rads));
+        this.y -= (distance * Math.cos(rads));
     }
 
     scale(scaleX, scaleY)
@@ -1206,6 +1218,18 @@ class Line
         this.x2 = x2;
         this.y2 = y2;
         this.colour = colour;
+    }
+
+    setPoint1(point = { x: 0, y: 0 })
+    {
+        this.x1 = point.x;
+        this.y1 = point.y;
+    }
+
+    setPoint2(point = { x: 0, y: 0 })
+    {
+        this.x2 = point.x;
+        this.y2 = point.y;
     }
 
     intersects(shape)
@@ -1373,7 +1397,7 @@ class Polygon extends Shape
         {
             let angle = this._rotation * (Math.PI / 180); // Convert to radians
 
-            var o = { x: this.x + this._origin.x, y: this.y + this._origin.y };
+            var o = { x: this.x, y: this.y };
 
             let tempX = pt.x - o.x;
             let tempY = pt.y - o.y;
@@ -1496,13 +1520,22 @@ class Polygon extends Shape
                 this.path.moveTo(p.x, p.y);
             }
         });
-
+        
         if (this.texture)
         {
+            ctx.save();
             // For testing hitbox
             // ctx.fillStyle = "rgba(0,255,0,0.5)";
             // ctx.fill(this.path);
-            ctx.drawImage(this.texture.render(), this.x, this.y);
+
+            ctx.translate(this.x, this.y);
+            ctx.rotate(this._rotation * Math.PI / 180);
+            ctx.scale(this._scale.x, this._scale.y);
+            ctx.translate(-this.x, -this.y);
+
+            ctx.drawImage(this.texture.render(), this.x - this._origin.x, this.y - this._origin.y);
+
+            ctx.restore();
         }
         else if (this._points.length > 2) ctx.fill(this.path);
         else ctx.stroke(this.path);
@@ -1660,7 +1693,7 @@ class Circle extends Shape
         if (this._isTransform || this.hasMoved()) this.isTransform();
         super.draw();
 
-        
+
         if (this.texture)
         {
             // For testing hitbox
@@ -1689,6 +1722,10 @@ class Texture extends Shape
             {
                 this.#img = await this.loadTexture(src);
                 if (!this.#area) this.#area = new Rectangle(this.#img.width, this.#img.height);
+
+                this._canvas = document.createElement('canvas');
+                this._ctx = this._canvas.getContext("2d");
+
                 return this;
             })();
         }
@@ -1696,6 +1733,9 @@ class Texture extends Shape
         else if (src instanceof Texture) this.#img = src.getImage();
 
         if (!this.#area) this.#area = new Rectangle(this.#img.width, this.#img.height);
+
+        this._canvas = document.createElement('canvas');
+        this._ctx = this._canvas.getContext("2d");
     }
 
     loadTexture(src)
@@ -1736,77 +1776,57 @@ class Texture extends Shape
         return this.#area;
     }
 
-    render(shape)
+    render()
     {
-        if (arguments.length == 0)
+        this._canvas.width = this.#area.getWidth();
+        this._canvas.height = this.#area.getHeight();
+
+        // For testing hitbox
+        // ctx.fillStyle = "rgba(255,0,0,0.5)";
+        // ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        this.#area._points.forEach((point, i) =>
         {
-            let canvas = document.createElement('canvas');
-            let ctx = canvas.getContext("2d");
+            let p = point();
+            // TODO Add this at some point right now it breaks everything
+            // if (p.x > this.#area._dimensions.global.maxX) this.#area._dimensions.global.maxX = p.x;
+            // else if (p.x < this.#area._dimensions.global.minX) this.#area._dimensions.global.minX = p.x;
+            // if (p.y > this.#area._dimensions.global.maxY) this.#area._dimensions.global.maxY = p.y;
+            // else if (p.y < this.#area._dimensions.global.minY) this.#area._dimensions.global.minY = p.y;
 
-            canvas.width = this.#area.getWidth();
-            canvas.height = this.#area.getHeight();
-
-            // For testing hitbox
-            // ctx.fillStyle = "rgba(255,0,0,0.5)";
-            // ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            this.#area._points.forEach((point, i) =>
+            if (i != 0) this.#area.path.lineTo(p.x, p.y);
+            else 
             {
-                let p = point();
-                // TODO Add this at some point right now it breaks everything
-                // if (p.x > this.#area._dimensions.global.maxX) this.#area._dimensions.global.maxX = p.x;
-                // else if (p.x < this.#area._dimensions.global.minX) this.#area._dimensions.global.minX = p.x;
-                // if (p.y > this.#area._dimensions.global.maxY) this.#area._dimensions.global.maxY = p.y;
-                // else if (p.y < this.#area._dimensions.global.minY) this.#area._dimensions.global.minY = p.y;
-
-                if (i != 0) this.#area.path.lineTo(p.x, p.y);
-                else 
-                {
-                    this.#area.path = new Path2D();
-                    this.#area.path.moveTo(p.x, p.y);
-                }
-            });
-
-            // Flipping textures and keeping positions
-            if (this._scale.x < 0) 
-            {
-                ctx.translate(-this.#area.getWidth() * this._scale.x, 0);
-                ctx.scale(-1, 1);
+                this.#area.path = new Path2D();
+                this.#area.path.moveTo(p.x, p.y);
             }
-            if (this._scale.y < 0) 
-            {
-                ctx.translate(0, -this.#area.getHeight() * this._scale.y);
-                ctx.scale(1, -1);
-            }
-            ctx.translate(-(this.x * (this._scale.x - 1)), -(this.y * (this._scale.y - 1)));
+        });
 
-            // Create clip for image at corner of canvas
-            ctx.translate(-this.#area.x, -this.#area.y);
-            ctx.clip(this.#area.path);
-
-            // Applies the users texture transforms
-            ctx.scale(Math.abs(this._scale.x), Math.abs(this._scale.y));
-            ctx.rotate(this._rotation);
-            ctx.translate(-this.x, -this.y);
-            ctx.drawImage(this.#img, 0, 0);
-
-            return canvas;
-        }
-        else
+        // Flipping textures and keeping positions
+        if (this._scale.x < 0) 
         {
-            let canvas = document.createElement("canvas");
-            let context = canvas.getContext("2d");
-
-            canvas.width = shape.getWidth();
-            canvas.height = shape.getHeight();
-
-            context.translate(-shape.x, -shape.y);
-            shape.draw(context);
-            context.clip();
-            context.drawImage(this.#img, 0, 0);
-
-            return canvas;
+            this._ctx.translate(-this.#area.getWidth() * this._scale.x, 0);
+            this._ctx.scale(-1, 1);
         }
+        if (this._scale.y < 0) 
+        {
+            this._ctx.translate(0, -this.#area.getHeight() * this._scale.y);
+            this._ctx.scale(1, -1);
+        }
+        this._ctx.translate(-(this.x * (this._scale.x - 1)), -(this.y * (this._scale.y - 1)));
+
+        // Create clip for image at corner of canvas
+        this._ctx.translate(-this.#area.x, -this.#area.y);
+        this._ctx.clip(this.#area.path);
+
+        // Applies the users texture transforms
+        this._ctx.scale(Math.abs(this._scale.x), Math.abs(this._scale.y));
+        this._ctx.rotate(this._rotation);
+        this._ctx.translate(-this.x - this._origin.x, -this.y - this._origin.y);
+
+        this._ctx.drawImage(this.#img, 0, 0);
+
+        return this._canvas;
     }
 }
 
