@@ -3,7 +3,6 @@ import { Canvas, Keyboard, Line, Mouse, Rectangle, Texture } from '../../Infinit
 // Create Canvas
 var canvas = new Canvas();
 canvas.colour = 'lightblue';
-canvas.setFullscreen(true );
 
 // Textures
 var tankTexture = await new Texture('images/tank_blue.png');
@@ -62,7 +61,7 @@ var bullets = [];
 var lastFire = 0;
 function fire()
 {
-    if (Date.now() - lastFire > 400)
+    if (Date.now() - lastFire > 500)
     {
         let bullet = new Rectangle(8, 14);
         bullet.setOrigin(4, 7);
@@ -95,19 +94,43 @@ canvas.onUpdate(() =>
     // Aim tank
     line.setPoint1(tank.getPosition());
     line.setPoint2(add(Mouse.getPosition(), canvas.getCamera().getPosition()));
-    tank.setRotation(line.getAngle());
 
     // Tank controls
-    if (Keyboard.isKeyDown('w')) tank.move(3 * canvas.delta);
+    let move = 0;
+    if (Keyboard.isKeyDown('w')) move = 3 * canvas.delta;
+    else if (Keyboard.isKeyDown('s')) move = -3 * canvas.delta;
+    tank.move(move);
+
     if (Mouse.getButtons().left) fire();
 
-    if (!box.destroyed && tank.intersects(box)) tank.move(-3 * canvas.delta);
+    // Box collision
+    if (!box.destroyed && tank.intersects(box)) tank.move(-move);
+    if (!box.destroyed && tank.intersects(box)) tank.move(-move);
+    let r = line.getAngle() - tank.getRotation()
+    tank.rotate(r);
+    if (!box.destroyed && tank.intersects(box)) {
+        tank.rotate(-r);
+    }
 
-    // Detect intersect
-    // if (box.intersects(tank)) box.colour = 'red';
-    // else if (box.colour == 'red') box.colour = 'black';
+    // Clear display
+    canvas.clear();
 
-    // Move all bullets
+    // Work out what sand tiles to draw on the screen
+    let bounds = canvas.getCamera().getBounds();
+    let minY = Math.max(0, Math.floor(bounds.top / 128));
+    let minX = Math.max(0, Math.floor(bounds.left / 128));
+    let maxY = Math.min(TILE_WIDTH-1, Math.ceil(bounds.bottom / 128));
+    let maxX = Math.min(TILE_WIDTH-1, Math.ceil(bounds.right / 128));
+    for (let y = minY; y < maxY; y++)
+    {
+        for (let x = minX; x < maxX; x++)
+        {
+            canvas.draw(tiles[y][x]);
+        }
+    }
+
+    if (!box.destroyed) canvas.draw(box);
+
     bullets.forEach(b =>
     {
         if (b.explode == false && !box.destroyed && b.intersects(box))
@@ -129,7 +152,7 @@ canvas.onUpdate(() =>
                 setTimeout(() =>
                 {
                     box.destroyed = false;
-                }, 10000);
+                }, 6000);
             }
         }
 
@@ -139,38 +162,7 @@ canvas.onUpdate(() =>
             b.scale(1.2, 1.2);
         }
         else b.setScale(1, 1);
-    });
 
-    // Get visible area
-    let bounds = canvas.getCamera().getBounds();
-
-    // Display
-    canvas.clear();
-    let minY = Math.max(0, Math.floor(bounds.top / 128));
-    let minX = Math.max(0, Math.floor(bounds.left / 128));
-    let maxY = Math.min(TILE_WIDTH-1, Math.ceil(bounds.bottom / 128));
-    let maxX = Math.min(TILE_WIDTH-1, Math.ceil(bounds.right / 128));
-    for (let y = minY; y < maxY; y++)
-    {
-        for (let x = minX; x < maxX; x++)
-        {
-            canvas.draw(tiles[y][x]);
-        }
-    }
-
-    // bounds.top -= 150;
-    // bounds.left -= 150;
-    // for (let y = 0; y < TILE_WIDTH; y++)
-    // {
-    //     for (let x = 0; x < TILE_WIDTH; x++)
-    //     {
-    //         let tile = tiles[y][x]
-    //         if (bounds.left < tile.x && tile.x < bounds.right && bounds.top < tile.y && tile.y < bounds.bottom) canvas.draw(tiles[y][x]);
-    //     }
-    // }
-    if (!box.destroyed) canvas.draw(box);
-    bullets.forEach(b =>
-    {
         if (bounds.left < b.x && b.x < bounds.right && bounds.top < b.y && b.y < bounds.bottom) canvas.draw(b);
     });
     canvas.draw(tank);
