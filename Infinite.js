@@ -39,8 +39,7 @@ styles.innerHTML = "[class^='Infinite-'] { position: absolute; top: 0; left: 0; 
     ".Infinite-FPS { font-size: 24px; }";
 document.getElementsByTagName("HEAD")[0].appendChild(styles);
 
-class Canvas
-{
+class Canvas {
     static _containCanvas = document.createElement('canvas');
     static _containContext = Canvas._containCanvas.getContext("2d");
     #id;
@@ -60,23 +59,18 @@ class Canvas
     static stopAll = false;
     static debug = false;
 
-    constructor(width = window.outerWidth, height = window.outerHeight, id = "Infinite")
-    {
-        if (arguments.length == 1)
-        {
-            if (typeof arguments[0] == "string")
-            {
+    constructor(width = window.outerWidth, height = window.outerHeight, id = "Infinite") {
+        if (arguments.length == 1) {
+            if (typeof arguments[0] == "string") {
                 id = arguments[0];
                 width = window.outerWidth;
                 height = window.outerHeight;
             }
-            else if (typeof arguments[0] == "number")
-            {
+            else if (typeof arguments[0] == "number") {
                 height = width * window.outerWidth / window.outerWidth;
             }
         }
-        else if (arguments.length == 3 && typeof arguments[0] == "string" && typeof arguments[1] == "number" && typeof arguments[2] == "number")
-        {
+        else if (arguments.length == 3 && typeof arguments[0] == "string" && typeof arguments[1] == "number" && typeof arguments[2] == "number") {
             id = arguments[0];
             width = arguments[1];
             height = arguments[2];
@@ -87,12 +81,10 @@ class Canvas
         else this.#id = id;
 
         this.#infinite = document.getElementById(id);
-        if (this.#infinite !== null)
-        {
+        if (this.#infinite !== null) {
             // Find/Fix wrapper
             this.#infinite.id = this.#id;
-            if (this.#infinite.tagName != "DIV")
-            {
+            if (this.#infinite.tagName != "DIV") {
                 let temp = document.createElement("div");
                 temp.id = this.#infinite.id;
                 temp.innerHTML = this.#infinite.innerHTML;
@@ -102,22 +94,19 @@ class Canvas
 
             // Create/Find canvas
             this.#canvas = this.#infinite.getElementsByTagName("canvas")[0];
-            if (this.#canvas === null || this.#canvas === undefined)
-            {
+            if (this.#canvas === null || this.#canvas === undefined) {
                 this.#canvas = document.createElement("canvas");
                 this.#canvas.className = "Infinite-Canvas";
                 this.#infinite.prepend(this.#canvas);
             }
-            else if (!this.#canvas.classList.contains("Infinite-Canvas"))
-            {
+            else if (!this.#canvas.classList.contains("Infinite-Canvas")) {
                 this.#canvas.className = "Infinite-Canvas " + this.#canvas.className;
             }
 
             // Create/Find canvas
             this.#ui = this.#infinite.getElementsByClassName("Infinite-UI")[0];
         }
-        else
-        {
+        else {
             this.#infinite = document.createElement("div");
             this.#infinite.id = this.#id;
 
@@ -152,8 +141,7 @@ class Canvas
         this.#canvas.style.height = '100vh';
     }
 
-    clear()
-    {
+    clear() {
         // Reset Transform and clear
         this.#ctx.setTransform(1, 0, 0, 1, 0, 0);
         this.#ctx.clearRect(0, 0, this.width, this.height);
@@ -173,13 +161,11 @@ class Canvas
         this.#ctx.rotate(cRot * Math.PI / 180);
     }
 
-    draw(shape)
-    {
+    draw(shape) {
         shape.draw(this.#ctx);
     }
 
-    run()
-    {
+    run() {
         Canvas.stopAll = false;
         this.running = true;
         this.show();
@@ -190,15 +176,12 @@ class Canvas
         this.#loop();
     }
 
-    #loop()
-    {
-        if (this.running && !Canvas.stopAll)
-        {
+    #loop() {
+        if (this.running && !Canvas.stopAll) {
             this.#update();
             window.requestAnimationFrame(() => this.#loop());
         }
-        else 
-        {
+        else {
             this.#end();
             this.#update();
         }
@@ -209,8 +192,7 @@ class Canvas
         this.#fps = 1 / (timeDif / 1000);
     }
 
-    stop()
-    {
+    stop() {
         this.running = false;
     }
 
@@ -222,18 +204,15 @@ class Canvas
     onUpdate(func) { this.#update = func; }
     onEnd(func) { this.#end = func; }
 
-    getCamera()
-    {
+    getCamera() {
         return this.#camera;
     }
 
-    getHTMLCanvas()
-    {
+    getHTMLCanvas() {
         return this.#canvas;
     }
 
-    setSize(width, height)
-    {
+    setSize(width, height) {
         this.width = width;
         this.height = height;
 
@@ -241,79 +220,64 @@ class Canvas
         this.#canvas.height = this.height;
     }
 
-    setPosition(x, y)
-    {
+    setPosition(x, y) {
         this.#canvas.style.top = y;
         this.#canvas.style.left = x;
     }
 
-    setFullscreen(stretch = false)
-    {
-        if (stretch == false) window.addEventListener('resize', () => 
-        {
+    setFullscreen(stretch = false) {
+        if (stretch == false) window.addEventListener('resize', () => {
             this.setSize(window.innerWidth, window.innerHeight);
 
             this.#canvas.style.width = window.innerWidth;
             this.#canvas.style.height = window.innerHeight;
             this.getCamera().setSize(window.innerWidth, window.innerHeight);
         }, false);
-        else window.addEventListener('resize', () => 
-        {
+        else window.addEventListener('resize', () => {
             this.#canvas.style.width = window.innerWidth;
             this.#canvas.style.height = window.innerHeight;
             this.getCamera().setSize(this.width, this.height);
         }, false);
     }
 
-    fpsVisible(val)
-    {
-        if (val)
-        {
+    fpsVisible(val) {
+        if (val) {
             this.#fpsTimer.style.display = "block";
 
             let self = this;
-            this.#fpsInterval = setInterval(() =>
-            {
+            this.#fpsInterval = setInterval(() => {
                 self.#fpsTimer.textContent = Math.round(self.#fps);
             }, 200);
         }
-        else
-        {
+        else {
             this.#fpsTimer.style.display = "none";
 
             clearInterval(this.#fpsInterval);
         }
     }
 
-    hide()
-    {
+    hide() {
         this.#canvas.style.display = "none";
         this.#fpsTimer.style.display = "none";
     }
 
-    show()
-    {
+    show() {
         this.#canvas.style.display = "block";
         this.#fpsTimer.style.display = "block";
     }
 
-    getUI()
-    {
+    getUI() {
         return this.#ui;
     }
 }
 
 
-class Input 
-{
+class Input {
     /** create(name, func) allows you to create/store crossplatform conditional statements that
      * can be run using, Input.{name}() */
-    static create(name, func)
-    {
-        if (name != "getTouch")
-        {
-            Input[name] = function ()
-            {
+    static create(name, func) {
+        if (name != "getTouch") {
+            Input[name] = function () {
                 if (arguments.length > 0) return func(...arguments);
                 else return func();
             };
@@ -322,8 +286,7 @@ class Input
 }
 
 
-class Keyboard
-{
+class Keyboard {
     // Static Keyboard - Looks for keypresses in the entire window
 
     static #isEnabled = false;
@@ -335,25 +298,20 @@ class Keyboard
     static #globalUpHandler;
     static #globalBlurHandler;
 
-    static #onGlobalKeyDown(e)
-    {
+    static #onGlobalKeyDown(e) {
         Keyboard.#globalPressedKeys[e.key.toLowerCase()] = true;
         Keyboard.#globalLastKeyDown = e.key.toLowerCase();
     }
-    static #onGlobalKeyUp(e)
-    {
+    static #onGlobalKeyUp(e) {
         Keyboard.#globalPressedKeys[e.key.toLowerCase()] = false;
         Keyboard.#globalLastKeyUp = e.key;
     }
-    static #onGlobalBlur(e)
-    {
+    static #onGlobalBlur(e) {
         Keyboard.#globalPressedKeys = {};
     }
 
-    static #init()
-    {
-        if (!this.#isEnabled)
-        {
+    static #init() {
+        if (!this.#isEnabled) {
             Keyboard.#globalDownHandler = Keyboard.#onGlobalKeyDown.bind(this);
             Keyboard.#globalUpHandler = Keyboard.#onGlobalKeyUp.bind(this);
             Keyboard.#globalBlurHandler = Keyboard.#onGlobalBlur.bind(this);
@@ -366,20 +324,17 @@ class Keyboard
         }
     }
 
-    static isKeyDown(key)
-    {
+    static isKeyDown(key) {
         Keyboard.#init();
         return Keyboard.#globalPressedKeys[key.toLowerCase()];
     }
 
-    static getLastKeyDown()
-    {
+    static getLastKeyDown() {
         Keyboard.#init();
         return Keyboard.#globalLastKeyDown;
     }
 
-    static getLastKeyPressed()
-    {
+    static getLastKeyPressed() {
         Keyboard.#init();
         return Keyboard.#globalLastKeyUp;
     }
@@ -398,34 +353,28 @@ class Keyboard
     #upHandler;
     #blurHandler;
 
-    constructor(HTML_Element)
-    {
+    constructor(HTML_Element) {
         if (arguments.length > 0) this.setTarget(HTML_Element);
         else console.warn("This Keyboard instance is missing a HTML element parameter");
     }
 
-    #onKeyDown(e)
-    {
+    #onKeyDown(e) {
         this.#pressedKeys[e.key.toLowerCase()] = true;
         this.#lastKeyDown = e.key.toLowerCase();
     }
-    #onKeyUp(e)
-    {
+    #onKeyUp(e) {
         this.#pressedKeys[e.key.toLowerCase()] = false;
         this.#lastKeyUp = e.key;
     }
-    #onBlur(e)
-    {
+    #onBlur(e) {
         this.#pressedKeys = {};
     }
 
-    setTarget(element)
-    {
+    setTarget(element) {
         this.destroy();
 
         if (element instanceof Canvas) element = element.getHTMLCanvas();
-        if (element instanceof Element)
-        {
+        if (element instanceof Element) {
             this.#downHandler = this.#onKeyDown.bind(this);
             this.#upHandler = this.#onKeyUp.bind(this);
             this.#blurHandler = this.#onBlur.bind(this);
@@ -439,25 +388,20 @@ class Keyboard
         else console.warn("This Keyboard instance is not linked to a HTML element");
     }
 
-    isKeyDown(key)
-    {
+    isKeyDown(key) {
         return this.#pressedKeys[key.toLowerCase()];
     }
 
-    getLastKeyDown()
-    {
+    getLastKeyDown() {
         return this.#lastKeyDown;
     }
 
-    getLastKeyPressed()
-    {
+    getLastKeyPressed() {
         return this.#lastKeyUp;
     }
 
-    destroy()
-    {
-        if (this.#element != null)
-        {
+    destroy() {
+        if (this.#element != null) {
             this.#element.removeEventListener('keydown', this.#downHandler);
             this.#element.removeEventListener("keyup", this.#upHandler);
             this.#element.removeEventListener("blur", this.#blurHandler);
@@ -467,8 +411,7 @@ class Keyboard
 }
 
 
-class Mouse
-{
+class Mouse {
     // Static Mouse - Looks for mouse information in the entire window
 
     static #isEnabled = false;
@@ -496,10 +439,8 @@ class Mouse
     static #globalMoveHandler;
     static #globalButtonHandler;
 
-    static #onGlobalMouseMove(e)
-    {
-        if (Date.now() - Mouse.#globalLastCall > Mouse.#globalInterval)
-        {
+    static #onGlobalMouseMove(e) {
+        if (Date.now() - Mouse.#globalLastCall > Mouse.#globalInterval) {
             Mouse.#globalState.position = {
                 x: e.clientX,
                 y: e.clientY
@@ -508,15 +449,12 @@ class Mouse
             Mouse.#globalLastCall = Date.now();
         }
     }
-    static #onGlobalUpdateButton(e)
-    {
+    static #onGlobalUpdateButton(e) {
         let arr = [0, 0, 0, 0];
         let buttons = e.buttons;
         let index = 3;
-        for (let i = 16; i >= 1; i /= 2)
-        {
-            if (buttons - i >= 0) 
-            {
+        for (let i = 16; i >= 1; i /= 2) {
+            if (buttons - i >= 0) {
                 arr[index]++;
                 buttons -= i;
             }
@@ -528,10 +466,8 @@ class Mouse
         Mouse.#globalState.button.other = Boolean(arr[3]);
     }
 
-    static #init()
-    {
-        if (!this.#isEnabled)
-        {
+    static #init() {
+        if (!this.#isEnabled) {
             Mouse.#globalMoveHandler = Mouse.#onGlobalMouseMove.bind(this);
             Mouse.#globalButtonHandler = Mouse.#onGlobalUpdateButton.bind(this);
 
@@ -543,32 +479,27 @@ class Mouse
         }
     }
 
-    static getPosition()
-    {
+    static getPosition() {
         Mouse.#init();
         return Mouse.#globalState.position;
     }
 
-    static getButtons()
-    {
+    static getButtons() {
         Mouse.#init();
         return Mouse.#globalState.button;
     }
 
-    static getChange()
-    {
+    static getChange() {
         Mouse.#init();
         return Mouse.#globalState.change;
     }
 
-    static getState()
-    {
+    static getState() {
         Mouse.#init();
         return Mouse.#globalState;
     }
 
-    static setUpdatesPerSecond(number)
-    {
+    static setUpdatesPerSecond(number) {
         Mouse.#init();
         Mouse.#globalInterval = 1000.0 / number;
     }
@@ -602,16 +533,13 @@ class Mouse
     #moveHandler;
     #buttonHandler;
 
-    constructor(HTML_element)
-    {
+    constructor(HTML_element) {
         if (arguments.length > 0) this.setTarget(HTML_element);
         else console.warn("This Mouse instance is missing a HTML element parameter");
     }
 
-    #onMouseMove(e)
-    {
-        if (Date.now() - this.#lastCall > this.#interval)
-        {
+    #onMouseMove(e) {
+        if (Date.now() - this.#lastCall > this.#interval) {
             // Get the bounding rectangle of target
             let rect = this.#element.getBoundingClientRect();
 
@@ -623,15 +551,12 @@ class Mouse
             this.#lastCall = Date.now();
         }
     }
-    #onUpdateButton(e)
-    {
+    #onUpdateButton(e) {
         let arr = [0, 0, 0, 0];
         let buttons = e.buttons;
         let index = 3;
-        for (let i = 16; i >= 1; i /= 2)
-        {
-            if (buttons - i >= 0) 
-            {
+        for (let i = 16; i >= 1; i /= 2) {
+            if (buttons - i >= 0) {
                 arr[index]++;
                 buttons -= i;
             }
@@ -643,13 +568,11 @@ class Mouse
         this.#state.button.other = Boolean(arr[3]);
     }
 
-    setTarget(element)
-    {
+    setTarget(element) {
         this.destroy();
 
         if (element instanceof Canvas) element = element.getHTMLCanvas();
-        if (element instanceof Element)
-        {
+        if (element instanceof Element) {
             this.#moveHandler = this.#onMouseMove.bind(this);
             this.#buttonHandler = this.#onUpdateButton.bind(this);
 
@@ -662,35 +585,28 @@ class Mouse
         else console.warn("This Mouse instance is not linked to a HTML element");
     }
 
-    getPosition()
-    {
+    getPosition() {
         return this.#state.position;
     }
 
-    getButtons()
-    {
+    getButtons() {
         return this.#state.button;
     }
 
-    getChange()
-    {
+    getChange() {
         return this.#state.change;
     }
 
-    getState()
-    {
+    getState() {
         return this.#state;
     }
 
-    setCallsPerSecond(number)
-    {
+    setCallsPerSecond(number) {
         this.#interval = 1000.0 / number;
     }
 
-    destroy()
-    {
-        if (this.#element != null)
-        {
+    destroy() {
+        if (this.#element != null) {
             this.#element.removeEventListener('mousemove', this.#moveHandler);
             this.#element.removeEventListener("mousedown", this.#buttonHandler);
             this.#element.removeEventListener("mouseup", this.#buttonHandler);
@@ -700,8 +616,7 @@ class Mouse
 }
 
 
-class Touchscreen
-{
+class Touchscreen {
     // Static Touch - Looks for mouse information in the entire window
 
     static #isEnabled = false;
@@ -722,8 +637,7 @@ class Touchscreen
     static #globalEndHandler;
     static #globalMoveHandler;
 
-    static #onGlobalTouchStart(evt)
-    {
+    static #onGlobalTouchStart(evt) {
         let e = evt.changedTouches[0];
 
         let x = e.clientX;
@@ -741,8 +655,7 @@ class Touchscreen
             y: y
         };
     }
-    static #onGlobalTouchEnd(evt)
-    {
+    static #onGlobalTouchEnd(evt) {
         let e = evt.changedTouches[0];
 
         let x = e.clientX;
@@ -760,8 +673,7 @@ class Touchscreen
             y: y
         };
     }
-    static #onGlobalTouchMove(evt)
-    {
+    static #onGlobalTouchMove(evt) {
         let e = evt.changedTouches[0];
 
         let x = e.clientX;
@@ -780,10 +692,8 @@ class Touchscreen
         };
     }
 
-    static #init()
-    {
-        if (!this.#isEnabled)
-        {
+    static #init() {
+        if (!this.#isEnabled) {
             Touchscreen.#globalStartHandler = Touchscreen.#onGlobalTouchStart.bind(this);
             Touchscreen.#globalEndHandler = Touchscreen.#onGlobalTouchEnd.bind(this);
             Touchscreen.#globalMoveHandler = Touchscreen.#onGlobalTouchMove.bind(this);
@@ -796,59 +706,50 @@ class Touchscreen
         }
     }
 
-    static getPosition()
-    {
+    static getPosition() {
         Touchscreen.#init();
         return { x: Touchscreen.#globalState.position.x, y: Touchscreen.#globalState.position.y };
     }
 
-    static isTouching()
-    {
+    static isTouching() {
         Touchscreen.#init();
         return Touchscreen.#globalState.isTouch;
     }
 
-    static getChange()
-    {
+    static getChange() {
         Touchscreen.#init();
         return { x: Touchscreen.#globalState.change.x, y: Touchscreen.#globalState.change.y };
     }
 
-    static getState()
-    {
+    static getState() {
         Touchscreen.#init();
         return JSON.parse(JSON.stringify(Touchscreen.#globalState));
     }
 }
 
 
-class Camera
-{
+class Camera {
     #width; #height;
     #x; #y;
     #rotation;
     #shape = null;
 
-    constructor(width = window.outerWidth, height = window.outerHeight)
-    {
+    constructor(width = window.outerWidth, height = window.outerHeight) {
         this.setSize(width, height);
         this.setPosition(0, 0);
         this.setRotation(0);
     }
 
-    setPosition(x, y)
-    {
+    setPosition(x, y) {
         this.#x = x;
         this.#y = y;
     }
 
-    track(shape)
-    {
+    track(shape) {
         this.#shape = shape;
     }
 
-    getPosition()
-    {
+    getPosition() {
         // TODO Change the getWidth/Height() to use global=true instead can't because problem with global dimensions
         if (this.#shape != null) return {
             x: this.#shape.x + this.#shape.getWidth(false) / 2 - this.#width / 2,
@@ -857,74 +758,58 @@ class Camera
         return { x: this.#x, y: this.#y };
     }
 
-    setSize(width, height)
-    {
+    setSize(width, height) {
         console.log(width, height)
         this.#width = width;
         this.#height = height;
     }
 
-    move(x = 0, y = 0)
-    {
+    move(x = 0, y = 0) {
         this.#x += x;
         this.#y += y;
     }
 
-    getSize()
-    {
+    getSize() {
         return { width: this.#width, height: this.#height };
     }
 
-    setRotation(rotation)
-    {
+    setRotation(rotation) {
         this.#rotation = rotation % 360;
     }
 
-    getRotation()
-    {
+    getRotation() {
         return this.#rotation;
     }
 
-    getBounds()
-    {
+    getBounds() {
         let pos = this.getPosition();
         return { top: pos.y, right: pos.x + this.#width, bottom: pos.y + this.#width, left: pos.x };
     }
 }
 
 
-class Util
-{
-    static delay(func, ms)
-    {
+class Util {
+    static delay(func, ms) {
         setTimeout(func, ms);
     }
 
-    static repeat(func, ms = 100, condition)
-    {
-        if (arguments.length < 3)
-        {
+    static repeat(func, ms = 100, condition) {
+        if (arguments.length < 3) {
             return setInterval(func, ms);
         }
-        else
-        {
-            if (typeof condition == "number")
-            {
+        else {
+            if (typeof condition == "number") {
                 var num = 0;
-                var val = setInterval(() =>
-                {
+                var val = setInterval(() => {
                     func();
                     if (++num == condition) clearInterval(val);
                 }, ms);
                 return val;
             }
-            else if (typeof condition == "function")
-            {
-                var val = setInterval(() =>
-                {
+            else if (typeof condition == "function") {
+                var val = setInterval(() => {
                     func();
-                    if (condition()) 
-                    {
+                    if (condition()) {
                         clearInterval(val);
                     }
                 }, ms);
@@ -934,16 +819,13 @@ class Util
         }
     }
 
-    static random(start, end)
-    {
+    static random(start, end) {
         return Math.round(Math.random() * Math.abs(end - start)) + start;
     }
 
-    static objArrayToArray(objArr)
-    {
+    static objArrayToArray(objArr) {
         let arr = [];
-        for (let i = 0; i < objArr.length; i++)
-        {
+        for (let i = 0; i < objArr.length; i++) {
             let temp = objArr[i]();
             arr.push(temp.x);
             arr.push(temp.y);
@@ -951,22 +833,18 @@ class Util
         return arr;
     }
 
-    static calculateAllCrossProduct(points)
-    {
+    static calculateAllCrossProduct(points) {
         var lastSign = null;
-        for (var i = 2; i < points.length; i++)
-        {
+        for (var i = 2; i < points.length; i++) {
             // Calculate crossproduct from 3 consecutive points
             var crossproduct = Util.calculateCrossProduct(points[i - 2](), points[i - 1](), points[i]());
             var currentSign = Math.sign(crossproduct);
-            if (lastSign == null)
-            {
+            if (lastSign == null) {
                 // Last sign init
                 lastSign = currentSign;
             }
 
-            if (lastSign !== currentSign)
-            {
+            if (lastSign !== currentSign) {
                 // Different sign in cross products,no need to check the remaining points --> concave polygon --> return function
                 return false;
             }
@@ -981,8 +859,7 @@ class Util
         // return checkCrossProductSign(lastSign, Math.sign(crossproductFirstPoint));
     }
 
-    static calculateCrossProduct(p1, p2, p3)
-    {
+    static calculateCrossProduct(p1, p2, p3) {
         var dx1 = p2.x - p1.x;
         var dy1 = p2.y - p1.y;
         var dx2 = p3.x - p2.x;
@@ -992,8 +869,7 @@ class Util
         return zcrossproduct;
     }
 
-    static isPolygonConvex(points)
-    {
+    static isPolygonConvex(points) {
         // Added this because it doesn't check the first and last points angle
         points.push(points[0]);
         let val = Util.calculateAllCrossProduct(points);
@@ -1004,8 +880,7 @@ class Util
 
 
 // Drawables
-class Shape
-{
+class Shape {
     _dimensions = {
         local: {
             minX: 0,
@@ -1021,8 +896,7 @@ class Shape
         }
     };
 
-    constructor()
-    {
+    constructor() {
         this.x = 0;
         this.y = 0;
         this._lastX = 0;
@@ -1038,72 +912,59 @@ class Shape
         this.path = new Path2D();
     }
 
-    onTransform()
-    {
+    onTransform() {
         this._isTransform = true;
     }
 
-    contains(point)
-    {
+    contains(point) {
         return Canvas._containContext.isPointInPath(this.path, point.x, point.y);
     }
 
-    setPosition(x, y)
-    {
-        if (arguments.length > 1)
-        {
+    setPosition(x, y) {
+        if (arguments.length > 1) {
             this.x = x;
             this.y = y;
         }
-        else if (typeof x === 'object')
-        {
+        else if (typeof x === 'object') {
             this.x = x.x;
             this.y = x.y;
         }
         else if (Canvas.debug) console.warn("setPosition missing arguments");
     }
 
-    getPosition()
-    {
+    getPosition() {
         return { x: this.x, y: this.y };
     }
 
-    setRotation(degrees = this.getRotation())
-    {
+    setRotation(degrees = this.getRotation()) {
         if (Canvas.debug && degrees == this.getRotation()) console.warn(new Error("setRotation() not changed"));
 
         this._rotation = degrees % 360;
         this.onTransform();
     }
 
-    getRotation()
-    {
+    getRotation() {
         return this._rotation % 360;
     }
 
-    rotate(degrees = 0)
-    {
+    rotate(degrees = 0) {
         this._rotation = (this._rotation + degrees) % 360;
         this.onTransform();
     }
 
-    move(distance = 1, angle = this.getRotation())
-    {
+    move(distance = 1, angle = this.getRotation()) {
         let rads = (angle % 360) * (Math.PI / 180);
         this.x += (distance * Math.sin(rads));
         this.y -= (distance * Math.cos(rads));
     }
 
-    scale(scaleX, scaleY)
-    {
-        if (arguments.length > 1)
-        {
+    scale(scaleX, scaleY) {
+        if (arguments.length > 1) {
             this._scale.x = Math.min(this._scale.x * scaleX, 1000000);
             this._scale.y = Math.min(this._scale.y * scaleY, 1000000);
             this.onTransform();
         }
-        else if (arguments.length == 1)
-        {
+        else if (arguments.length == 1) {
             this._scale.x = Math.min(this._scale.x * scaleX, 1000000);
             this._scale.y = Math.min(this._scale.y * scaleX, 1000000);
             this.onTransform();
@@ -1111,71 +972,58 @@ class Shape
         else if (Canvas.debug) console.warn(new Error("scale missing arguments"));
     }
 
-    setScale(scaleX, scaleY)
-    {
-        if (arguments.length > 1)
-        {
+    setScale(scaleX, scaleY) {
+        if (arguments.length > 1) {
 
             this._scale = { x: Math.min(scaleX, 1000000), y: Math.min(scaleY, 1000000) };
             this.onTransform();
         }
-        else if (arguments.length == 1)
-        {
+        else if (arguments.length == 1) {
             this._scale = { x: Math.min(scaleX, 1000000), y: Math.min(scaleX, 1000000) };
             this.onTransform();
         }
         else if (Canvas.debug) console.warn(new Error("setScale missing arguments"));
     }
 
-    getScale()
-    {
+    getScale() {
         return { x: this._scale.x, y: this._scale.y };
     }
 
-    setOrigin(x, y)
-    {
-        if (arguments.length > 1)
-        {
+    setOrigin(x, y) {
+        if (arguments.length > 1) {
             this._origin = { x: x, y: y };
             this.onTransform();
         }
         else if (Canvas.debug) console.warn(new Error("setCenter missing arguments"));
     }
 
-    getOrigin()
-    {
+    getOrigin() {
         return { x: this._origin.x, y: this._origin.y };
     }
 
-    getSize(global = true)
-    {
+    getSize(global = true) {
         if (global) return { width: this._dimensions.global.maxX - this._dimensions.global.minX, height: this._dimensions.global.maxY - this._dimensions.global.minY };
         else return { width: this._dimensions.local.maxX - this._dimensions.local.minX, height: this._dimensions.local.maxY - this._dimensions.local.minY };
     }
 
-    getWidth(global = true)
-    {
+    getWidth(global = true) {
         return this.getSize(global).width;
     }
 
-    getHeight(global = true)
-    {
+    getHeight(global = true) {
         return this.getSize(global).height;
     }
 
-    draw()
-    {
+    draw() {
         this._lastX = this.x;
         this._lastY = this.y;
     }
 
-    hasMoved()
-    {
+    hasMoved() {
         return !(this._lastX == this.x && this._lastY == this.y);
     }
 
-    resetTransforms()
-    {
+    resetTransforms() {
         this._origin = { x: 0, y: 0 };
         this._rotation = 0;
         this._scale = { x: 1, y: 1 };
@@ -1186,10 +1034,8 @@ class Shape
      * 
      *  If it has a shape argument it will convert the shape into a replica of the argument shape 
      */
-    clone(shape)
-    {
-        if (arguments.length == 0)
-        {
+    clone(shape) {
+        if (arguments.length == 0) {
             let temp = new Shape();
             temp._dimensions = JSON.parse(JSON.stringify(this._dimensions));
             temp._rotation = this.getRotation();
@@ -1198,8 +1044,7 @@ class Shape
             temp.x = this.x; temp.y = this.y;
             return temp;
         }
-        else if (shape instanceof Shape)
-        {
+        else if (shape instanceof Shape) {
             this._dimensions = JSON.parse(JSON.stringify(shape._dimensions));
             this._rotation = shape.getRotation();
             this._scale = shape.getScale();
@@ -1212,10 +1057,8 @@ class Shape
 }
 
 
-class Line
-{
-    constructor(x1 = 0, y1 = 0, x2 = 0, y2 = 0, colour = 'black')
-    {
+class Line {
+    constructor(x1 = 0, y1 = 0, x2 = 0, y2 = 0, colour = 'black') {
         this.x1 = x1;
         this.y1 = y1;
         this.x2 = x2;
@@ -1223,73 +1066,59 @@ class Line
         this.colour = colour;
     }
 
-    setPoint1(point = { x: 0, y: 0 })
-    {
+    setPoint1(point = { x: 0, y: 0 }) {
         this.x1 = point.x;
         this.y1 = point.y;
     }
 
-    setPoint2(point = { x: 0, y: 0 })
-    {
+    setPoint2(point = { x: 0, y: 0 }) {
         this.x2 = point.x;
         this.y2 = point.y;
     }
 
-    intersects(shape)
-    {
+    intersects(shape) {
         if (shape instanceof Sprite) shape = shape.getHitbox();
 
-        if (shape instanceof Polygon)
-        {
-            if (shape.isConvex())
-            {
+        if (shape instanceof Polygon) {
+            if (shape.isConvex()) {
                 return Intersects.linePolygon(this.x1, this.y1, this.x2, this.y2, Util.objArrayToArray(shape._points), 0.0001);
             }
-            else
-            {
+            else {
                 if (shape.contains({ x: this.x1, y: this.y1 }) || shape.contains({ x: this.x2, y: this.y2 })) return true;
-                for (let i = 0; i < shape._lines.length; i++)
-                {
+                for (let i = 0; i < shape._lines.length; i++) {
                     let p1 = shape._lines[i]()[0];
                     let p2 = shape._lines[i]()[1];
-                    if (Intersects.lineLine(this.x1, this.y1, this.x2, this.y2, p1.x, p1.y, p2.x, p2.y, 1, 1))
-                    {
+                    if (Intersects.lineLine(this.x1, this.y1, this.x2, this.y2, p1.x, p1.y, p2.x, p2.y, 1, 1)) {
                         return true;
                     }
                 };
                 return false;
             }
         }
-        else if (shape instanceof Circle)
-        {
+        else if (shape instanceof Circle) {
             return Intersects.lineCircle(this.x1, this.y1, this.x2, this.y2, shape.x + shape.radius, shape.y + shape.radius, shape.radius);
         }
-        else if (shape instanceof Line)
-        {
+        else if (shape instanceof Line) {
             return Intersects.lineLine(this.x1, this.y1, this.x2, this.y2, shape.x1, shape.y1, shape.x2, shape.y2, 1, 1)
         }
         return null;
     }
 
-    getAngle()
-    {
+    getAngle() {
         return (Math.atan2(this.y2 - this.y1, this.x2 - this.x1) * 180 / Math.PI + 90) % 360;
     }
 
-    getLength()
-    {
+    getLength() {
         return Math.hypot(this.x2 - this.x1, this.y2 - this.y1);
     }
 
-    getComponets()
-    {
+    getComponets() {
         let length = this.getLength();
         let angle = this.getAngle() * Math.PI / 180;
         return { vertical: length * -Math.cos(angle), horizontal: length * Math.sin(angle) };
     }
 
-    draw(ctx)
-    {
+    draw(ctx) {
         ctx.beginPath();
         ctx.lineWidth = 1;
         ctx.strokeStyle = this.colour;
@@ -1300,13 +1129,11 @@ class Line
 }
 
 
-class Polygon extends Shape
-{
+class Polygon extends Shape {
     #convex;
     texture;
 
-    constructor(json = [], x = 0, y = 0)
-    {
+    constructor(json = [], x = 0, y = 0) {
         super();
         this._json = [];
         this._points = [];
@@ -1317,8 +1144,7 @@ class Polygon extends Shape
         this.setPoints(json);
     }
 
-    isTransform()
-    {
+    isTransform() {
         this._dimensions.global = {
             minX: 0,
             maxX: 0,
@@ -1326,8 +1152,7 @@ class Polygon extends Shape
             maxY: 0
         };
 
-        this._points.forEach((point, i) =>
-        {
+        this._points.forEach((point, i) => {
             let p = point();
             if (p.x > this._dimensions.global.maxX) this._dimensions.global.maxX = p.x;
             else if (p.x < this._dimensions.global.minX) this._dimensions.global.minX = p.x;
@@ -1335,8 +1160,7 @@ class Polygon extends Shape
             else if (p.y < this._dimensions.global.minY) this._dimensions.global.minY = p.y;
 
             if (i != 0) this.path.lineTo(p.x, p.y);
-            else 
-            {
+            else {
                 this.path = new Path2D();
                 this.path.moveTo(p.x, p.y);
             }
@@ -1344,10 +1168,8 @@ class Polygon extends Shape
         this._isTransform = false;
     }
 
-    setPoints(json)
-    {
-        if (Array.isArray(json) && json.length > 2 && json[0].x != undefined && json[0].y != undefined)
-        {
+    setPoints(json) {
+        if (Array.isArray(json) && json.length > 2 && json[0].x != undefined && json[0].y != undefined) {
             this._json = JSON.parse(JSON.stringify(json));
             this._points = JSON.parse(JSON.stringify(json));
 
@@ -1357,15 +1179,13 @@ class Polygon extends Shape
             this._dimensions.local.maxY = this._json[0].y;
 
             this.path = new Path2D();
-            this._points = this._points.map((point, i) =>
-            {
+            this._points = this._points.map((point, i) => {
                 if (point.x > this._dimensions.local.maxX) this._dimensions.local.maxX = point.x;
                 else if (point.x < this._dimensions.local.minX) this._dimensions.local.minX = point.x;
                 if (point.y > this._dimensions.local.maxY) this._dimensions.local.maxY = point.y;
                 else if (point.y < this._dimensions.local.minY) this._dimensions.local.minY = point.y;
 
-                return () =>
-                {
+                return () => {
                     return this.#rotatePoint(
                         {
                             x: this.x + (point.x * this._scale.x) - this._origin.x,
@@ -1374,10 +1194,8 @@ class Polygon extends Shape
                 };
             });
 
-            this._points.forEach((point, i) =>
-            {
-                if (i < this._points.length - 1)
-                {
+            this._points.forEach((point, i) => {
+                if (i < this._points.length - 1) {
                     this._lines.push(() => { return [point(), this._points[i + 1]()]; });
                 }
 
@@ -1394,10 +1212,8 @@ class Polygon extends Shape
         return false;
     }
 
-    #rotatePoint(pt)
-    {
-        if (this.getRotation() != 0)
-        {
+    #rotatePoint(pt) {
+        if (this.getRotation() != 0) {
             let angle = this._rotation * (Math.PI / 180); // Convert to radians
 
             var o = { x: this.x, y: this.y };
@@ -1413,33 +1229,25 @@ class Polygon extends Shape
         else return pt;
     }
 
-    intersects(shape)
-    {
-        if (shape instanceof Sprite) 
-        {
+    intersects(shape) {
+        if (shape instanceof Sprite) {
             shape = shape.getHitbox();
         }
 
-        if (shape instanceof Polygon)
-        {
-            if (this.isConvex() && shape.isConvex())
-            {
+        if (shape instanceof Polygon) {
+            if (this.isConvex() && shape.isConvex()) {
                 return Intersects.polygonPolygon(Util.objArrayToArray(this._points), Util.objArrayToArray(shape._points));
             }
-            else
-            {
+            else {
                 if (shape.contains(this._points[0]()) || this.contains(shape._points[0]())) return true;
-                for (let i = 0; i < this._lines.length; i++)
-                {
-                    for (let j = 0; j < shape._lines.length; j++)
-                    {
+                for (let i = 0; i < this._lines.length; i++) {
+                    for (let j = 0; j < shape._lines.length; j++) {
                         let p1 = this._lines[i]()[0];
                         let p2 = this._lines[i]()[1];
                         let p3 = shape._lines[j]()[0]
                         let p4 = shape._lines[j]()[1];
 
-                        if (Intersects.lineLine(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y, p4.x, p4.y, 1, 1))
-                        {
+                        if (Intersects.lineLine(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y, p4.x, p4.y, 1, 1)) {
                             return true;
                         }
                     };
@@ -1447,17 +1255,13 @@ class Polygon extends Shape
                 return false;
             }
         }
-        else if (shape instanceof Circle)
-        {
-            if (this.isConvex())
-            {
+        else if (shape instanceof Circle) {
+            if (this.isConvex()) {
                 return Intersects.polygonCircle(Util.objArrayToArray(this._points), shape.x + shape.radius, shape.y + shape.radius, shape.radius, 0.0001);
             }
-            else
-            {
+            else {
                 if (shape.contains(this._points[0]()) || this.contains(shape.getOrigin())) return true;
-                for (let i = 0; i < this._lines.length; i++)
-                {
+                for (let i = 0; i < this._lines.length; i++) {
                     let p1 = this._lines[i]()[0];
                     let p2 = this._lines[i]()[1];
                     if (Intersects.lineCircle(p1.x, p1.y, p2.x, p2.y, shape.x + shape.radius, shape.y + shape.radius, shape.radius)) return true;
@@ -1465,21 +1269,16 @@ class Polygon extends Shape
                 return false;
             }
         }
-        else if (shape instanceof Line)
-        {
-            if (this.isConvex())
-            {
+        else if (shape instanceof Line) {
+            if (this.isConvex()) {
                 return Intersects.polygonLine(Util.objArrayToArray(this._points), shape.x1, shape.y1, shape.x2, shape.y2, 0.0001);
             }
-            else
-            {
+            else {
                 if (this.contains({ x: shape.x1, y: shape.y1 }) || this.contains({ x: shape.x2, y: shape.y2 })) return true;
-                for (let i = 0; i < this._lines.length; i++)
-                {
+                for (let i = 0; i < this._lines.length; i++) {
                     let p1 = this._lines[i]()[0];
                     let p2 = this._lines[i]()[1];
-                    if (Intersects.lineLine(p1.x, p1.y, p2.x, p2.y, shape.x1, shape.y1, shape.x2, shape.y2, 1, 1))
-                    {
+                    if (Intersects.lineLine(p1.x, p1.y, p2.x, p2.y, shape.x1, shape.y1, shape.x2, shape.y2, 1, 1)) {
                         return true;
                     }
                 };
@@ -1489,43 +1288,36 @@ class Polygon extends Shape
         return null;
     }
 
-    getSize(global = true)
-    {
+    getSize(global = true) {
         if (global) return { width: this._dimensions.global.maxX - this._dimensions.global.minX, height: this._dimensions.global.maxY - this._dimensions.global.minY };
         else return { width: this._dimensions.local.maxX - this._dimensions.local.minX, height: this._dimensions.local.maxY - this._dimensions.local.minY };
     }
 
-    isConvex()
-    {
+    isConvex() {
         return this.#convex;
     }
 
-    setTexture(texture)
-    {
+    setTexture(texture) {
         this.texture = texture;
     }
 
-    draw(ctx)
-    {
+    draw(ctx) {
         ctx.beginPath();
         ctx.fillStyle = this.colour;
 
         if (this._isTransform || this.hasMoved()) this.isTransform();
         super.draw();
 
-        this._points.forEach((point, i) =>
-        {
+        this._points.forEach((point, i) => {
             let p = point();
             if (i != 0) this.path.lineTo(p.x, p.y);
-            else 
-            {
+            else {
                 this.path = new Path2D();
                 this.path.moveTo(p.x, p.y);
             }
         });
-        
-        if (this.texture)
-        {
+
+        if (this.texture) {
             ctx.save();
             // For testing hitbox
             // ctx.fillStyle = "rgba(0,255,0,0.5)";
@@ -1544,10 +1336,8 @@ class Polygon extends Shape
         else ctx.stroke(this.path);
     }
 
-    clone(shape)
-    {
-        if (arguments.length == 0)
-        {
+    clone(shape) {
+        if (arguments.length == 0) {
             let temp = new Polygon(JSON.parse(JSON.stringify(this._json)), this.x, this.y);
             temp._dimensions = JSON.parse(JSON.stringify(this._dimensions));
             temp._rotation = this.getRotation();
@@ -1556,8 +1346,7 @@ class Polygon extends Shape
             temp.x = this.x; temp.y = this.y;
             return temp;
         }
-        else if (shape instanceof Polygon)
-        {
+        else if (shape instanceof Polygon) {
             this.setPoints(JSON.parse(JSON.stringify(shape._json)));
             this._dimensions = JSON.parse(JSON.stringify(shape._dimensions));
             this._rotation = shape.getRotation();
@@ -1571,23 +1360,19 @@ class Polygon extends Shape
 }
 
 
-class Rectangle extends Polygon
-{
+class Rectangle extends Polygon {
     #width = 0;
     #height = 0;
 
-    constructor(width, height, x = 0, y = 0)
-    {
+    constructor(width, height, x = 0, y = 0) {
         super([{ x: 0, y: 0 }, { x: width, y: 0 }, { x: width, y: height }, { x: 0, y: height }], x, y);
 
         this.#width = width;
         this.#height = height;
     }
 
-    setSize(width, height)
-    {
-        if (arguments.length > 1)
-        {
+    setSize(width, height) {
+        if (arguments.length > 1) {
             this.#width = width;
             this.#height = height;
             this.setPoints([{ x: 0, y: 0 }, { x: width, y: 0 }, { x: width, y: height }, { x: 0, y: height }]);
@@ -1595,39 +1380,33 @@ class Rectangle extends Polygon
         else if (Canvas.debug) console.warn(new Error("setSize missing arguments"));
     }
 
-    setWidth(width)
-    {
+    setWidth(width) {
         if (arguments.length > 0) this.setSize(width, this.#height);
         else if (Canvas.debug) console.warn(new Error("setWidth missing arguments"));
     }
 
-    setHeight(height)
-    {
+    setHeight(height) {
         if (arguments.length > 0) this.setSize(this.#width, height);
         else if (Canvas.debug) console.warn(new Error("setHeight missing arguments"));
     }
 }
 
 
-class Circle extends Shape
-{
+class Circle extends Shape {
     texture;
 
-    constructor(radius, x, y)
-    {
+    constructor(radius, x, y) {
         super();
         this.radius = radius;
 
-        if (arguments.length > 2)
-        {
+        if (arguments.length > 2) {
             this.x = x;
             this.y = y;
         }
         this.path.arc(this.x + this.radius, this.y + this.radius, this.radius, 0, 2 * Math.PI);
     }
 
-    isTransform()
-    {
+    isTransform() {
         // TODO global should conatin proper min and max values
         this._dimensions = {
             global: {
@@ -1650,21 +1429,16 @@ class Circle extends Shape
         this._isTransform = false;
     }
 
-    intersects(shape)
-    {
+    intersects(shape) {
         if (shape instanceof Sprite) shape = shape.getHitbox();
 
-        if (shape instanceof Polygon)
-        {
-            if (shape.isConvex())
-            {
+        if (shape instanceof Polygon) {
+            if (shape.isConvex()) {
                 return Intersects.circlePolygon(this.x + this.radius, this.y + this.radius, this.radius, Util.objArrayToArray(shape._points));
             }
-            else
-            {
+            else {
                 if (this.contains(shape._points[0]()) || shape.contains(this.getOrigin())) return true;
-                for (let i = 0; i < shape._lines.length; i++)
-                {
+                for (let i = 0; i < shape._lines.length; i++) {
                     let p1 = shape._lines[i]()[0];
                     let p2 = shape._lines[i]()[1];
                     if (Intersects.lineCircle(p1.x, p1.y, p2.x, p2.y, this.x + this.radius, this.y + this.radius, this.radius)) return true;
@@ -1672,24 +1446,20 @@ class Circle extends Shape
                 return false;
             }
         }
-        else if (shape instanceof Circle)
-        {
+        else if (shape instanceof Circle) {
             return Intersects.circleCircle(this.x + this.radius, this.y + this.radius, this.radius, shape.x + shape.radius, shape.y + shape.radius, shape.radius);
         }
-        else if (shape instanceof Line)
-        {
+        else if (shape instanceof Line) {
             return Intersects.circleLine(this.x + this.radius, this.y + this.radius, this.radius, shape.x1, shape.y1, shape.x2, shape.y2);
         }
         return null;
     }
 
-    setTexture(texture)
-    {
+    setTexture(texture) {
         this.texture = texture;
     }
 
-    draw(ctx)
-    {
+    draw(ctx) {
         ctx.beginPath();
         ctx.fillStyle = this.colour;
 
@@ -1697,8 +1467,7 @@ class Circle extends Shape
         super.draw();
 
 
-        if (this.texture)
-        {
+        if (this.texture) {
             // For testing hitbox
             // ctx.fillStyle = "rgba(0,255,0,0.5)";
             // ctx.fill(this.path);
@@ -1709,20 +1478,16 @@ class Circle extends Shape
 }
 
 
-class Texture extends Shape
-{
+class Texture extends Shape {
     #img = new Image();
     #area;
 
-    constructor(src, area)
-    {
+    constructor(src, area) {
         super();
         if (area instanceof Shape) this.#area = area;
 
-        if (src instanceof String || typeof src == "string")
-        {
-            return (async () =>
-            {
+        if (src instanceof String || typeof src == "string") {
+            return (async () => {
                 this.#img = await this.loadTexture(src);
                 if (!this.#area) this.#area = new Rectangle(this.#img.width, this.#img.height);
 
@@ -1741,46 +1506,37 @@ class Texture extends Shape
         this._ctx = this._canvas.getContext("2d");
     }
 
-    loadTexture(src)
-    {
-        if (src instanceof String || typeof src == "string")
-        {
-            return new Promise((resolve, reject) =>
-            {
+    loadTexture(src) {
+        if (src instanceof String || typeof src == "string") {
+            return new Promise((resolve, reject) => {
                 let img = new Image();
                 img.onload = () => resolve(img);
                 img.onerror = () => reject(new Error("loadTexture couldn't find the source file"));
                 img.src = src;
             })
         }
-        else
-        {
+        else {
             throw new Error("Invalid source in loadTexture");
         }
     }
 
-    setImage(image)
-    {
+    setImage(image) {
         this.#img = image;
     }
 
-    getImage()
-    {
+    getImage() {
         return this.#img;
     }
 
-    setArea(shape)
-    {
+    setArea(shape) {
         this.#area = shape;
     }
 
-    getArea()
-    {
+    getArea() {
         return this.#area;
     }
 
-    render()
-    {
+    render() {
         this._canvas.width = this.#area.getWidth();
         this._canvas.height = this.#area.getHeight();
 
@@ -1788,8 +1544,7 @@ class Texture extends Shape
         // ctx.fillStyle = "rgba(255,0,0,0.5)";
         // ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        this.#area._points.forEach((point, i) =>
-        {
+        this.#area._points.forEach((point, i) => {
             let p = point();
             // TODO Add this at some point right now it breaks everything
             // if (p.x > this.#area._dimensions.global.maxX) this.#area._dimensions.global.maxX = p.x;
@@ -1798,21 +1553,18 @@ class Texture extends Shape
             // else if (p.y < this.#area._dimensions.global.minY) this.#area._dimensions.global.minY = p.y;
 
             if (i != 0) this.#area.path.lineTo(p.x, p.y);
-            else 
-            {
+            else {
                 this.#area.path = new Path2D();
                 this.#area.path.moveTo(p.x, p.y);
             }
         });
 
         // Flipping textures and keeping positions
-        if (this._scale.x < 0) 
-        {
+        if (this._scale.x < 0) {
             this._ctx.translate(-this.#area.getWidth() * this._scale.x, 0);
             this._ctx.scale(-1, 1);
         }
-        if (this._scale.y < 0) 
-        {
+        if (this._scale.y < 0) {
             this._ctx.translate(0, -this.#area.getHeight() * this._scale.y);
             this._ctx.scale(1, -1);
         }
@@ -1835,64 +1587,51 @@ class Texture extends Shape
 
 
 /** @deprecated */
-class Sprite extends Shape
-{
+class Sprite extends Shape {
     #texture = new Texture();
     #area;
     #showHitbox = false;
 
-    constructor(texture, area)
-    {
+    constructor(texture, area) {
         super();
         var args = arguments;
 
-        if (texture instanceof String || typeof texture == "string")
-        {
-            return (async () =>
-            {
+        if (texture instanceof String || typeof texture == "string") {
+            return (async () => {
                 this.#texture = await new Texture(texture);
 
-                if (args.length > 1) 
-                {
+                if (args.length > 1) {
                     this.#area = area;
                 }
-                else
-                {
+                else {
                     this.#area = new Rectangle(this.#texture.getImage().width, this.#texture.getImage().height);
                 }
                 this.setTextureArea(this.#area);
                 return this;
             })();
         }
-        else if (texture instanceof Texture)
-        {
+        else if (texture instanceof Texture) {
             this.#texture = texture;
-            if (arguments.length > 1) 
-            {
+            if (arguments.length > 1) {
                 this.#area = area;
             }
-            else
-            {
+            else {
                 this.#area = new Rectangle(this.#texture.getImage().width, this.#texture.getImage().height);
             }
             this.setTextureArea(this.#area);
         }
     }
 
-    showHitbox(value = true)
-    {
+    showHitbox(value = true) {
         this.#showHitbox = value;
     }
 
-    getHitbox()
-    {
-        if (this.#area instanceof Polygon)
-        {
+    getHitbox() {
+        if (this.#area instanceof Polygon) {
             let clone = this.#area.clone();
             return clone;
         }
-        else if (this.#area instanceof Circle)
-        {
+        else if (this.#area instanceof Circle) {
             let clone = new Circle(this.#area.radius, this.x, this.y);
             clone._rotation = this._rotation;
             clone._origin = this.#area._origin;
@@ -1901,20 +1640,16 @@ class Sprite extends Shape
         }
     }
 
-    getWidth()
-    {
+    getWidth() {
         return this.getHitbox().getWidth();
     }
 
-    getHeight()
-    {
+    getHeight() {
         return this.getHitbox().getHeight();
     }
 
-    setTextureArea(area)
-    {
-        if (area instanceof Shape)
-        {
+    setTextureArea(area) {
+        if (area instanceof Shape) {
             this.#area = area.clone();
             this.#area.clone(this);
             this.#texture.setArea(area);
@@ -1923,14 +1658,12 @@ class Sprite extends Shape
         return false;
     }
 
-    flip(horizontal = false, vertical = false)
-    {
+    flip(horizontal = false, vertical = false) {
         if (horizontal) this._scale.x = -this._scale.x;
         if (vertical) this._scale.y = -this._scale.y;
     }
 
-    draw(ctx)
-    {
+    draw(ctx) {
         this.#area.clone(this);
 
         ctx.save();
@@ -1952,12 +1685,10 @@ class Sprite extends Shape
         ctx.translate(-(this.x * (this._scale.x - 1)), -(this.y * (this._scale.y - 1)));
         ctx.scale(this._scale.x, this._scale.y);
 
-        if (this.#showHitbox) 
-        {
+        if (this.#showHitbox) {
             ctx.drawImage(this.#texture.getArea(), this.x, this.y);
         }
-        else 
-        {
+        else {
             let temp = this.#area.colour;
             this.#area.colour = 'rgba(0, 0, 0, 0.0)';
             ctx.drawImage(this.#texture.getArea(), this.x, this.y);
@@ -1968,10 +1699,8 @@ class Sprite extends Shape
 }
 
 
-class DisplayText
-{
-    constructor()
-    {
+class DisplayText {
+    constructor() {
         if (arguments == 0) this.value = "";
         else this.value = arguments[0];
 
@@ -1981,14 +1710,12 @@ class DisplayText
         this.setPosition(0, 0);
     }
 
-    setPosition(x, y)
-    {
+    setPosition(x, y) {
         this.x = x;
         this.y = y + this.size;
     }
 
-    draw(context)
-    {
+    draw(context) {
         context.font = this.size + "px " + this.font;
         context.fillStyle = this.colour;
         context.fillText(this.value, this.x, this.y);
@@ -1997,11 +1724,9 @@ class DisplayText
 
 
 /** @deprecated */
-class OldPolygon extends Shape
-{
+class OldPolygon extends Shape {
     #dimensions = { minX: null, maxX: null, minY: null, maxY: null };
-    constructor(json = [], x = 0, y = 0)
-    {
+    constructor(json = [], x = 0, y = 0) {
         super();
 
         this._points = [];
@@ -2012,17 +1737,14 @@ class OldPolygon extends Shape
         this.setPoints(json);
     }
 
-    addPoint(x, y)
-    {
-        if (this.#dimensions.minX == null)
-        {
+    addPoint(x, y) {
+        if (this.#dimensions.minX == null) {
             this.#dimensions.maxX = x;
             this.#dimensions.minX = x;
             this.#dimensions.maxY = y;
             this.#dimensions.minY = y;
         }
-        else
-        {
+        else {
             if (x > this.#dimensions.maxX) this.#dimensions.maxX = x;
             else if (x < this.#dimensions.minX) this.#dimensions.minX = x;
             if (y > this.#dimensions.maxY) this.#dimensions.maxY = y;
@@ -2032,10 +1754,8 @@ class OldPolygon extends Shape
         this._origin.x = (this.#dimensions.maxX - this.#dimensions.minX) / 2;
         this._origin.y = (this.#dimensions.maxY - this.#dimensions.minY) / 2;
 
-        if (arguments.length == 2)
-        {
-            this._points.push(() =>
-            {
+        if (arguments.length == 2) {
+            this._points.push(() => {
                 return this.#rotatePoint(
                     {
                         x: this.x + (x * this._scale.x) + ((this._scale.x < 0) ? this._origin.x * 2 * -this._scale.x : 0),
@@ -2047,10 +1767,8 @@ class OldPolygon extends Shape
         return false;
     }
 
-    setPoints(json)
-    {
-        if (Array.isArray(json) && json.length > 2)
-        {
+    setPoints(json) {
+        if (Array.isArray(json) && json.length > 2) {
             this.json = json;
             this._points = [];
             this._lines = [];
@@ -2062,15 +1780,13 @@ class OldPolygon extends Shape
             this.#dimensions.minY = json[0].y;
             this.#dimensions.maxY = json[0].y;
 
-            this.json.forEach(point =>
-            {
+            this.json.forEach(point => {
                 if (point.x > this.#dimensions.maxX) this.#dimensions.maxX = point.x;
                 else if (point.x < this.#dimensions.minX) this.#dimensions.minX = point.x;
                 if (point.y > this.#dimensions.maxY) this.#dimensions.maxY = point.y;
                 else if (point.y < this.#dimensions.minY) this.#dimensions.minY = point.y;
 
-                this._points.push(() =>
-                {
+                this._points.push(() => {
                     return this.#rotatePoint(
                         {
                             x: this.x + (point.x * this._scale.x) + ((this._scale.x < 0) ? this._dimensions.x * -this._scale.x : 0),
@@ -2082,12 +1798,9 @@ class OldPolygon extends Shape
             this._dimensions.x = this.#dimensions.maxX - this.#dimensions.minX;
             this._dimensions.y = this.#dimensions.maxY - this.#dimensions.minY;
 
-            if (this._points.length > 2)
-            {
-                this._points.forEach(function (point, i)
-                {
-                    if (i < self._points.length - 1)
-                    {
+            if (this._points.length > 2) {
+                this._points.forEach(function (point, i) {
+                    if (i < self._points.length - 1) {
                         self._lines.push(() => { return [point, self._points[i + 1]]; });
                     }
                 });
@@ -2098,8 +1811,7 @@ class OldPolygon extends Shape
         return false;
     }
 
-    contains(point)
-    {
+    contains(point) {
         let canvas = document.createElement("canvas");
         let context = canvas.getContext("2d");
 
@@ -2109,33 +1821,25 @@ class OldPolygon extends Shape
         return val;
     }
 
-    intersects(shape)
-    {
-        if (shape instanceof Sprite) 
-        {
+    intersects(shape) {
+        if (shape instanceof Sprite) {
             shape = shape.getHitbox();
         }
 
-        if (shape instanceof Polygon)
-        {
-            if (Util.isPolygonConvex(this._points) && Util.isPolygonConvex(shape._points))
-            {
+        if (shape instanceof Polygon) {
+            if (Util.isPolygonConvex(this._points) && Util.isPolygonConvex(shape._points)) {
                 return Intersects.polygonPolygon(Util.objArrayToArray(this._points), Util.objArrayToArray(shape._points));
             }
-            else
-            {
+            else {
                 if (shape.contains(this._points[0]()) || this.contains(shape._points[0]())) return true;
-                for (let i = 0; i < this._lines.length; i++)
-                {
-                    for (let j = 0; j < shape._lines.length; j++)
-                    {
+                for (let i = 0; i < this._lines.length; i++) {
+                    for (let j = 0; j < shape._lines.length; j++) {
                         let p1 = this._lines[i]()[0]();
                         let p2 = this._lines[i]()[1]();
                         let p3 = shape._lines[j]()[0]();
                         let p4 = shape._lines[j]()[1]();
 
-                        if (Intersects.lineLine(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y, p4.x, p4.y, 1, 1))
-                        {
+                        if (Intersects.lineLine(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y, p4.x, p4.y, 1, 1)) {
                             return true;
                         }
                     };
@@ -2143,17 +1847,13 @@ class OldPolygon extends Shape
                 return false;
             }
         }
-        else if (shape instanceof Circle)
-        {
-            if (Util.isPolygonConvex(this._points))
-            {
+        else if (shape instanceof Circle) {
+            if (Util.isPolygonConvex(this._points)) {
                 return Intersects.polygonCircle(Util.objArrayToArray(this._points), shape.x + shape.radius, shape.y + shape.radius, shape.radius, 0.0001);
             }
-            else
-            {
+            else {
                 if (shape.contains(this._points[0]()) || this.contains(shape.getOrigin())) return true;
-                for (let i = 0; i < this._lines.length; i++)
-                {
+                for (let i = 0; i < this._lines.length; i++) {
                     let p1 = this._lines[i]()[0]();
                     let p2 = this._lines[i]()[1]();
                     if (Intersects.lineCircle(p1.x, p1.y, p2.x, p2.y, shape.x + shape.radius, shape.y + shape.radius, shape.radius)) return true;
@@ -2161,21 +1861,16 @@ class OldPolygon extends Shape
                 return false;
             }
         }
-        else if (shape instanceof Line)
-        {
-            if (Util.isPolygonConvex(this._points))
-            {
+        else if (shape instanceof Line) {
+            if (Util.isPolygonConvex(this._points)) {
                 return Intersects.polygonLine(Util.objArrayToArray(this._points), shape.x1, shape.y1, shape.x2, shape.y2, 0.0001);
             }
-            else
-            {
+            else {
                 if (this.contains({ x: shape.x1, y: shape.y1 }) || this.contains({ x: shape.x2, y: shape.y2 })) return true;
-                for (let i = 0; i < this._lines.length; i++)
-                {
+                for (let i = 0; i < this._lines.length; i++) {
                     let p1 = this._lines[i]()[0]();
                     let p2 = this._lines[i]()[1]();
-                    if (Intersects.lineLine(p1.x, p1.y, p2.x, p2.y, shape.x1, shape.y1, shape.x2, shape.y2, 1, 1))
-                    {
+                    if (Intersects.lineLine(p1.x, p1.y, p2.x, p2.y, shape.x1, shape.y1, shape.x2, shape.y2, 1, 1)) {
                         return true;
                     }
                 };
@@ -2185,10 +1880,8 @@ class OldPolygon extends Shape
         return null;
     }
 
-    #rotatePoint(pt)
-    {
-        if (this.getRotation() != 0)
-        {
+    #rotatePoint(pt) {
+        if (this.getRotation() != 0) {
             let angle = this._rotation * (Math.PI / 180); // Convert to radians
 
             var o = { x: 0, y: 0 };
@@ -2212,16 +1905,14 @@ class OldPolygon extends Shape
     // TODO Solution to getWidth if the shape is rotated or scaled but find a better way to implement it
     getState() { return; }
 
-    draw(ctx)
-    {
+    draw(ctx) {
         ctx.save();
         ctx.beginPath();
 
         ctx.fillStyle = this.colour;
 
         ctx.moveTo(this._points[0]().x, this._points[0]().y);
-        this._points.forEach(function (point, i)
-        {
+        this._points.forEach(function (point, i) {
             if (i != 0)
                 ctx.lineTo(point().x, point().y);
         });
